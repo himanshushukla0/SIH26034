@@ -28,8 +28,8 @@ The **LMPC Compliance Engine** is an AI-powered automated regulatory auditor and
 
 ### 2. Clone the Repository
 ```bash
-git clone <YOUR-GITHUB-REPO-URL>
-cd SIH
+git clone https://github.com/himanshushukla0/SIH26034.git
+cd SIH26034
 ```
 
 ---
