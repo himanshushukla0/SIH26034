@@ -1,0 +1,39 @@
+# ============================================
+# SIH26034: LMPC Compliance Engine - Backend
+# ============================================
+
+# --- Core API Framework ---
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.20
+python-dotenv==1.1.0
+
+# --- AI / LLM ---
+google-genai==2.22.0
+langchain==1.4.0
+langgraph==1.2.11
+langchain-google-genai==2.1.5
+
+# --- Web Scraping ---
+scrapegraphai==2.2.2
+playwright==1.62.0
+
+# --- Image Processing ---
+opencv-python-headless==4.11.0.86
+Pillow==11.2.1
+
+# --- Barcode / QR ---
+pyzbar==0.1.9
+
+# --- Database ---
+sqlalchemy==2.0.41
+aiosqlite==0.21.0
+asyncpg>=0.30.0
+httpx>=0.28.0
+alembic==1.15.2
+
+# --- PDF Report Generation ---
+weasyprint==63.1
+
+# --- CORS ---
+starlette==0.46.2

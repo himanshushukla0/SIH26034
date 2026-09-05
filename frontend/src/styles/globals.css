@@ -1,0 +1,417 @@
+/* ============================================================
+   LMPC Compliance Engine — Department of Consumer Affairs
+   Modern Clean Enterprise Design System (Inspired by Hostel Care & Linear)
+   Crisp, high-utility, zero-clutter interface for statutory officers
+   ============================================================ */
+
+:root {
+  --bg: #0e1117;
+  --bg-dot: rgba(255, 255, 255, 0.04);
+  --panel: #161b22;
+  --panel-2: #1f242c;
+  --border: #30363d;
+  --border-subtle: #21262d;
+  --border-str: #484f58;
+  --text: #f0f6fc;
+  --muted: #8b949e;
+  --faint: #6e7681;
+  
+  /* Government & Statutory Accents */
+  --brand: #38bdf8;
+  --brand-soft: rgba(56, 189, 248, 0.12);
+  --success: #3fb950;
+  --success-soft: rgba(63, 185, 80, 0.12);
+  --danger: #f85149;
+  --danger-soft: rgba(248, 81, 73, 0.12);
+  --warn: #d29922;
+  --warn-soft: rgba(210, 153, 34, 0.12);
+  --saffron: #f0883e;
+  --saffron-soft: rgba(240, 136, 62, 0.12);
+
+  --font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  
+  --r-sm: 6px;
+  --r: 8px;
+  --r-lg: 12px;
+  --maxw: 1200px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --bg-dot: rgba(0, 0, 0, 0.04);
+  --panel: #ffffff;
+  --panel-2: #f1f5f9;
+  --border: #e2e8f0;
+  --border-subtle: #edf2f7;
+  --border-str: #cbd5e1;
+  --text: #0f172a;
+  --muted: #475569;
+  --faint: #94a3b8;
+
+  --brand: #0284c7;
+  --brand-soft: rgba(2, 132, 199, 0.08);
+  --success: #16a34a;
+  --success-soft: rgba(22, 163, 74, 0.08);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.08);
+  --warn: #d97706;
+  --warn-soft: rgba(217, 119, 6, 0.08);
+  --saffron: #ea580c;
+  --saffron-soft: rgba(234, 88, 12, 0.08);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--bg-dot) 1px, transparent 1px);
+  background-size: 20px 20px;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* National Tricolor Line */
+.tricolor-strip {
+  height: 3px;
+  background: linear-gradient(90deg, #ff9933 33.33%, #ffffff 33.33%, #ffffff 66.66%, #138808 66.66%);
+}
+
+/* Top Accessibility Strip */
+.top-accessibility-bar {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+/* Header & Top Bar */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.masthead-inner {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r);
+  background: var(--brand-soft);
+  border: 1px solid var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand);
+  font-size: 1.1rem;
+}
+
+.brand-text h1 {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.brand-text .subtitle {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.officer-badge-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+}
+
+/* Segmented Tab Navigation */
+.tab-nav-container {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  gap: 4px;
+}
+
+.tab-btn {
+  padding: 8px 14px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+}
+
+.tab-btn.active {
+  color: var(--brand);
+  border-bottom: 2px solid var(--brand);
+  font-weight: 600;
+}
+
+/* Workspace Main Container */
+.app-main {
+  max-width: var(--maxw);
+  margin: 24px auto;
+  padding: 0 20px;
+}
+
+/* Clean Hero Section */
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand);
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--brand);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hero-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.hero-subtitle {
+  font-size: 0.88rem;
+  color: var(--muted);
+  max-width: 720px;
+  margin: 0 auto 20px;
+  line-height: 1.6;
+}
+
+/* Telemetry Strip */
+.telemetry-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.telemetry-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.telemetry-item strong {
+  color: var(--text);
+}
+
+/* Clean Cards (Hostel Care / Linear Style) */
+.gov-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.gov-card-header {
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+
+/* Buttons */
+.btn-gov-primary {
+  background: var(--brand);
+  color: #0b1329;
+  border: 1px solid var(--brand);
+  padding: 8px 16px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-gov-primary:hover {
+  filter: brightness(1.1);
+}
+
+.btn-gov-secondary {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-gov-secondary:hover {
+  background: var(--panel);
+  border-color: var(--border-str);
+}
+
+.btn-gov-danger {
+  background: var(--danger);
+  color: #ffffff;
+  border: 1px solid var(--danger);
+  padding: 8px 16px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Badges */
+.badge-pass {
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid var(--success);
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  font-weight: 600;
+  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-fail {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  font-weight: 600;
+  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-amber {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  font-weight: 600;
+  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Offline Sync Notification */
+.offline-banner {
+  background: var(--warn-soft);
+  border-bottom: 1px solid var(--warn);
+  color: var(--warn);
+  padding: 8px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.offline-sync-btn {
+  background: var(--warn);
+  color: #0e1117;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Reticle & Frame */
+.hud-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--brand);
+  border-style: solid;
+  pointer-events: none;
+}
+.hud-corner-tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
+.hud-corner-tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; }
+.hud-corner-bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; }
+.hud-corner-br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
+
+@media (max-width: 768px) {
+  .top-accessibility-bar { display: none; }
+  .masthead-inner { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .tab-nav-container { overflow-x: auto; }
+}
