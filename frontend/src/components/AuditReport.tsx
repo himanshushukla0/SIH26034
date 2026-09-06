@@ -12,6 +12,7 @@ import type { AuditVerdict, PackagingExtractions } from "../api";
 import ComplianceGauge from "./ComplianceGauge";
 import ViolationCard from "./ViolationCard";
 import ComparisonView from "./ComparisonView";
+import { useLanguage } from "../context/LanguageContext";
 
 interface AuditReportProps {
   verdict: AuditVerdict;
@@ -21,18 +22,18 @@ interface AuditReportProps {
   sourceUrl?: string;
 }
 
-/** Map internal field keys to human-readable labels. */
-const DECLARATION_LABELS: Record<string, string> = {
-  manufacturer_name: "Manufacturer / Packer Name",
-  manufacturer_address: "Manufacturer Address",
-  country_of_origin: "Country of Origin",
-  generic_name: "Generic / Common Name",
-  net_quantity: "Net Quantity",
-  manufacture_date: "Month & Year of Mfg/Packing",
-  expiry_date: "Best Before / Expiry Date",
-  mrp: "Maximum Retail Price (MRP)",
-  unit_sale_price: "Unit Sale Price (USP)",
-  consumer_care: "Consumer Care Details",
+/** Map internal field keys to bilingual human-readable labels. */
+const DECLARATION_LABELS: Record<string, { en: string; hi: string }> = {
+  manufacturer_name: { en: "Manufacturer / Packer Name", hi: "निर्माता / पैकर का नाम" },
+  manufacturer_address: { en: "Manufacturer Address", hi: "निर्माता / पैकर का पता" },
+  country_of_origin: { en: "Country of Origin", hi: "मूल देश (Country of Origin)" },
+  generic_name: { en: "Generic / Common Name", hi: "वस्तु का सामान्य / जेनेरिक नाम" },
+  net_quantity: { en: "Net Quantity", hi: "शुद्ध मात्रा (Net Quantity)" },
+  manufacture_date: { en: "Month & Year of Mfg/Packing", hi: "निर्माण / पैकिंग का माह एवं वर्ष" },
+  expiry_date: { en: "Best Before / Expiry Date", hi: "उपयोग की अंतिम तिथि (Expiry Date)" },
+  mrp: { en: "Maximum Retail Price (MRP)", hi: "अधिकतम खुदरा मूल्य (MRP)" },
+  unit_sale_price: { en: "Unit Sale Price (USP)", hi: "प्रति इकाई विक्रय मूल्य (USP)" },
+  consumer_care: { en: "Consumer Care Details", hi: "उपभोक्ता सहायता विवरण" },
 };
 
 function getStatusIcon(status: string) {
@@ -68,6 +69,7 @@ export default function AuditReport({
   platform,
   sourceUrl,
 }: AuditReportProps) {
+  const { lang, t } = useLanguage();
   const criticalCount = verdict.violations.filter(
     (v) => v.severity === "critical"
   ).length;
@@ -105,13 +107,13 @@ export default function AuditReport({
       >
         <div>
           <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#38bdf8", fontWeight: 700 }}>
-            ⚖️ Statutory Legal Metrology Compliance Audit • Department of Consumer Affairs Guidelines (SIH26034)
+            {t("act_reference_subtitle")}
           </div>
           <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)", marginTop: "2px" }}>
-            Statutory Legal Metrology Compliance Audit • The Legal Metrology Act, 2009 (Act No. 1 of 2010)
+            {t("statutory_audit_banner")}
           </div>
           <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
-            Enforced under Sections 11, 15, 18, 29, 36 & 49 of the Act read with Legal Metrology (Packaged Commodities) Rules, 2011
+            {t("statutory_enforcement_sub")}
           </div>
         </div>
         <button
@@ -119,7 +121,7 @@ export default function AuditReport({
           className="btn-secondary"
           style={{ padding: "6px 14px", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px" }}
         >
-          <Printer size={14} /> Print Statutory Notice
+          <Printer size={14} /> {t("print_notice_btn")}
         </button>
       </div>
 
@@ -179,7 +181,7 @@ export default function AuditReport({
               }}
             >
               <BarChart3 size={16} style={{ color: "var(--accent-cyan)" }} />
-              Audit Summary
+              {lang === "hi" ? "ऑडिट सारांश" : "Audit Summary"}
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
@@ -190,7 +192,9 @@ export default function AuditReport({
                   fontSize: "0.85rem",
                 }}
               >
-                <span style={{ color: "var(--text-muted)" }}>Total Checks</span>
+                <span style={{ color: "var(--text-muted)" }}>
+                  {lang === "hi" ? "कुल जांच" : "Total Checks"}
+                </span>
                 <span style={{ fontWeight: 700 }}>{verdict.total_checks}</span>
               </div>
               <div
@@ -200,7 +204,9 @@ export default function AuditReport({
                   fontSize: "0.85rem",
                 }}
               >
-                <span style={{ color: "var(--accent-emerald)" }}>✓ Passed</span>
+                <span style={{ color: "var(--accent-emerald)" }}>
+                  {lang === "hi" ? "✓ सफल (Passed)" : "✓ Passed"}
+                </span>
                 <span style={{ fontWeight: 700, color: "var(--accent-emerald)" }}>
                   {verdict.passed_checks}
                 </span>
@@ -212,7 +218,9 @@ export default function AuditReport({
                   fontSize: "0.85rem",
                 }}
               >
-                <span style={{ color: "var(--accent-rose)" }}>✗ Failed</span>
+                <span style={{ color: "var(--accent-rose)" }}>
+                  {lang === "hi" ? "✗ विफल (Failed)" : "✗ Failed"}
+                </span>
                 <span style={{ fontWeight: 700, color: "var(--accent-rose)" }}>
                   {verdict.failed_checks}
                 </span>
@@ -235,7 +243,7 @@ export default function AuditReport({
                   }}
                 >
                   <span className="badge badge-critical" style={{ fontSize: "0.7rem" }}>
-                    CRITICAL
+                    {t("severity_critical")}
                   </span>
                   <span style={{ fontWeight: 700 }}>{criticalCount}</span>
                 </div>
@@ -249,7 +257,7 @@ export default function AuditReport({
                   }}
                 >
                   <span className="badge badge-major" style={{ fontSize: "0.7rem" }}>
-                    MAJOR
+                    {t("severity_major")}
                   </span>
                   <span style={{ fontWeight: 700 }}>{majorCount}</span>
                 </div>
@@ -263,7 +271,7 @@ export default function AuditReport({
                   }}
                 >
                   <span className="badge badge-minor" style={{ fontSize: "0.7rem" }}>
-                    MINOR
+                    {t("severity_minor")}
                   </span>
                   <span style={{ fontWeight: 700 }}>{minorCount}</span>
                 </div>
@@ -280,7 +288,7 @@ export default function AuditReport({
                   fontSize: "0.8rem",
                 }}
               >
-                <span style={{ color: "var(--text-muted)" }}>Computed USP: </span>
+                <span style={{ color: "var(--text-muted)" }}>{t("computed_usp_label")} </span>
                 <span style={{ fontWeight: 700, color: "var(--text-accent)" }}>
                   {verdict.computed_usp}
                 </span>
@@ -305,7 +313,7 @@ export default function AuditReport({
                 }}
               >
                 <Printer size={14} />
-                Print Inspection Notice
+                {t("print_notice_btn")}
               </button>
             </div>
           </div>
@@ -318,7 +326,7 @@ export default function AuditReport({
             <div className="section-header">
               <h3 className="section-title">
                 <ShieldCheck size={20} style={{ color: "var(--accent-emerald)" }} />
-                Mandatory Declarations (Rule 6)
+                {t("declarations_checklist_title")}
               </h3>
             </div>
             <div className="declaration-grid">
@@ -335,13 +343,17 @@ export default function AuditReport({
                   </div>
                   <div>
                     <div className="declaration-label">
-                      {DECLARATION_LABELS[key] || key}
+                      {DECLARATION_LABELS[key]?.[lang] || DECLARATION_LABELS[key]?.en || key}
                     </div>
                     <div className="declaration-value">
                       {decl.value
                         ? String(decl.value)
                         : decl.status === "MISSING"
-                        ? "Not found on package"
+                        ? lang === "hi"
+                          ? "पैकेज पर नहीं मिला"
+                          : "Not found on package"
+                        : lang === "hi"
+                        ? "आंशिक रूप से पहचाना गया"
                         : "Partially detected"}
                     </div>
                   </div>
@@ -356,7 +368,7 @@ export default function AuditReport({
               <div className="section-header">
                 <h3 className="section-title">
                   <AlertTriangle size={20} style={{ color: "var(--accent-amber)" }} />
-                  Violations Detected ({verdict.violations.length})
+                  {t("violations_section_title")} ({verdict.violations.length})
                 </h3>
               </div>
               {verdict.violations.map((v, i) => (

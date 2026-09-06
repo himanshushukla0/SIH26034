@@ -24,6 +24,7 @@ import {
 import { Html5Qrcode } from "html5-qrcode";
 import { scanPackage } from "../api";
 import type { AuditResponse } from "../api";
+import { useLanguage } from "../context/LanguageContext";
 
 interface LiveScannerProps {
   onScanComplete: (result: AuditResponse) => void;
@@ -67,6 +68,7 @@ const DEMO_PRODUCTS = [
 ];
 
 export default function LiveScanner({ onScanComplete, onError }: LiveScannerProps) {
+  const { t } = useLanguage();
   const [isScanning, setIsScanning] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastBarcode, setLastBarcode] = useState<string | null>(null);
@@ -293,7 +295,7 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
             }}
           >
             <Radio size={12} color="#38bdf8" />
-            <span>FIELD INSPECTION CAMERA</span>
+            <span>{t("camera_field")}</span>
           </div>
 
           <div
@@ -319,7 +321,7 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
                 background: isScanning ? "#22c55e" : "#94a3b8",
               }}
             />
-            <span>{isScanning ? "LIVE STREAM ACTIVE" : "CAMERA READY"}</span>
+            <span>{isScanning ? t("camera_live") : t("camera_ready")}</span>
           </div>
         </div>
 
@@ -365,12 +367,12 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
             >
               <Crosshair size={32} color="#38bdf8" />
               <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#e2e8f0" }}>
-                Align Barcode / QR Inside Reticle
+                {t("align_barcode_reticle")}
               </span>
             </div>
 
             <p style={{ color: "#94a3b8", fontSize: "0.8rem", maxWidth: "440px", textAlign: "center" }}>
-              Supports Indian EAN-13, GS1 DataBar, FSSAI 14-digit codes, and imported commodity labels.
+              {t("camera_support_desc")}
             </p>
           </div>
         )}
@@ -475,7 +477,7 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
             style={{ padding: "0.75rem 1.75rem", fontSize: "0.92rem" }}
           >
             <Camera size={18} />
-            <span>{scanStatus === "idle" ? "Activate Inspection Camera" : "Scan Another Package"}</span>
+            <span>{scanStatus === "idle" ? t("activate_camera") : t("scan_another")}</span>
           </button>
         )}
 
@@ -486,7 +488,7 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
             style={{ padding: "0.75rem 1.75rem", fontSize: "0.92rem" }}
           >
             <CameraOff size={18} />
-            <span>Deactivate Camera</span>
+            <span>{t("deactivate_camera")}</span>
           </button>
         )}
       </div>
@@ -495,10 +497,10 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
       <div className="gov-card" style={{ width: "100%", padding: "1.25rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.65rem" }}>
           <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--gov-navy-dark)" }}>
-            🔍 Manual Code or License Verification
+            {t("manual_search_title")}
           </span>
           <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-            GTIN-13 / EAN / FSSAI (14-digit)
+            {t("manual_search_sub")}
           </span>
         </div>
 
@@ -515,7 +517,7 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
             type="text"
             value={manualInput}
             onChange={(e) => setManualInput(e.target.value)}
-            placeholder="Enter Barcode or 14-digit FSSAI number (e.g. 8901030383478)..."
+            placeholder={t("manual_placeholder")}
             style={{
               flex: 1,
               padding: "0.65rem 0.85rem",
@@ -532,7 +534,7 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
             className="btn-gov-primary"
           >
             <Search size={15} />
-            <span>Verify</span>
+            <span>{t("verify_button")}</span>
           </button>
         </form>
       </div>

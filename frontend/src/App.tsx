@@ -32,6 +32,7 @@ import {
   getPendingScansCount,
   syncAllPendingScans,
 } from "./utils/offlineQueue";
+import { useLanguage } from "./context/LanguageContext";
 
 type TabKey = "livescan" | "scanner" | "url" | "analytics";
 
@@ -66,7 +67,7 @@ export default function App() {
 
   // --- Accessibility & Language State ---
   const [fontSizeOffset, setFontSizeOffset] = useState<number>(0);
-  const [currentLang, setCurrentLang] = useState<"en" | "hi">("en");
+  const { lang, toggleLang, t } = useLanguage();
 
   // --- Offline Field Inspection State ---
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
@@ -216,18 +217,19 @@ export default function App() {
       {/* 1. GovTech Accessibility & SIH Innovation Bar */}
       <div className="top-accessibility-bar">
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          <span>🇮🇳 <strong>Smart India Hackathon</strong> | SIH26034 Innovation Prototype</span>
+          <span>🇮🇳 <strong>Smart India Hackathon</strong> | {t("topbar_sih_title")}</span>
           <span style={{ color: "var(--border)" }}>|</span>
-          <span style={{ color: "var(--gov-gold)", fontWeight: 600 }}>Proposal for Department of Consumer Affairs</span>
+          <span style={{ color: "var(--gov-gold)", fontWeight: 600 }}>{t("topbar_proposal")}</span>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "1.2rem" }}>
           <a
             href="tel:1915"
             style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "var(--gov-gold)" }}
+            title="Statutory Helpline Reference"
           >
             <Phone size={13} />
-            <span>National Consumer Helpline: <strong>1915</strong></span>
+            <span>{t("topbar_helpline")}</span>
           </a>
           <span style={{ color: "var(--border)" }}>|</span>
 
@@ -281,12 +283,26 @@ export default function App() {
           </div>
 
           <span style={{ color: "var(--border)" }}>|</span>
-          <span
-            onClick={() => setCurrentLang(currentLang === "en" ? "hi" : "en")}
-            style={{ cursor: "pointer", fontWeight: 700, color: "var(--brand)" }}
+          <button
+            onClick={toggleLang}
+            style={{
+              background: "rgba(56, 189, 248, 0.15)",
+              color: "#38bdf8",
+              border: "1px solid rgba(56, 189, 248, 0.4)",
+              borderRadius: "4px",
+              padding: "2px 8px",
+              cursor: "pointer",
+              fontWeight: 700,
+              fontSize: "0.76rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+            title="Switch Language / भाषा बदलें"
           >
-            {currentLang === "en" ? "हिन्दी" : "English"}
-          </span>
+            <span>🌐</span>
+            <span>{lang === "en" ? "हिन्दी" : "English"}</span>
+          </button>
         </div>
       </div>
 
@@ -299,12 +315,12 @@ export default function App() {
           <div className="brand-section">
             <LmpcBrandLogo />
             <div className="brand-titles">
-              <span className="brand-hindi">विधिक मापविज्ञान (पैकेज्ड कमोडिटीज) अनुपालन प्रणाली</span>
-              <span className="brand-english">AUTOMATED LMPC COMPLIANCE ENGINE</span>
+              <span className="brand-hindi">{t("masthead_dept")}</span>
+              <span className="brand-english">{t("masthead_title")}</span>
               <span className="brand-sub">
-                <span className="badge-sih">SIH26034 PROTOTYPE</span>
+                <span className="badge-sih">{t("masthead_prototype_badge")}</span>
                 <span>•</span>
-                <span>Proposed AI Solution for Department of Consumer Affairs</span>
+                <span>{t("masthead_proposal_sub")}</span>
               </span>
             </div>
           </div>
@@ -313,14 +329,14 @@ export default function App() {
             <div className="officer-badge-box">
               <div className="name flex items-center gap-1.5 justify-end">
                 <ShieldCheck size={14} className="text-sky-400" />
-                <span>Auditor Cockpit View</span>
+                <span>{t("auditor_cockpit")}</span>
               </div>
-              <div className="dept">SIH Live Demonstration Sandbox</div>
+              <div className="dept">{t("sih_sandbox")}</div>
             </div>
 
             <div className="ai-status-pill">
               <div className="ai-pulse-dot" />
-              <span>{isOffline ? "OFFLINE CACHE" : "GEMINI 3.6 FLASH • ACTIVE"}</span>
+              <span>{isOffline ? t("ai_offline") : t("ai_active")}</span>
             </div>
           </div>
         </div>
@@ -336,7 +352,7 @@ export default function App() {
             id="tab-livescan"
           >
             <ScanLine size={16} />
-            Field Camera Scanner
+            {t("tab_livescan")}
           </button>
           <button
             className={`tab-btn ${activeTab === "scanner" ? "active" : ""}`}
@@ -347,7 +363,7 @@ export default function App() {
             id="tab-scanner"
           >
             <ImagePlus size={16} />
-            Evidence Image Upload
+            {t("tab_scanner")}
           </button>
           <button
             className={`tab-btn ${activeTab === "url" ? "active" : ""}`}
@@ -358,7 +374,7 @@ export default function App() {
             id="tab-url"
           >
             <Globe size={16} />
-            E-Commerce URL Auditor
+            {t("tab_url")}
           </button>
           <button
             className={`tab-btn ${activeTab === "analytics" ? "active" : ""}`}
@@ -369,7 +385,7 @@ export default function App() {
             id="tab-analytics"
           >
             <BarChart3 size={16} />
-            Officer MIS &amp; Seizures
+            {t("tab_analytics")}
           </button>
         </nav>
       </header>
@@ -378,7 +394,7 @@ export default function App() {
       <div className="demo-shelf-bar">
         <div className="demo-shelf-label">
           <Sparkles size={14} />
-          <span>Quick Field Demonstrations:</span>
+          <span>{t("demo_shelf_label")}</span>
         </div>
         <div className="demo-chips-list">
           <button
@@ -386,28 +402,28 @@ export default function App() {
             onClick={() => handleQuickDemo("compliant")}
             title="Load fully compliant pre-packaged commodity test"
           >
-            🍵 Tata Tea Gold 500g (100% Compliant)
+            {t("demo_tata_tea")}
           </button>
           <button
             className="demo-chip violation"
             onClick={() => handleQuickDemo("violation")}
             title="Load test with missing USP, missing Country of Origin, and non-standard units"
           >
-            🌶️ Royal Shahi Garam Masala (Statutory Infractions)
+            {t("demo_garam_masala")}
           </button>
           <button
             className="demo-chip violation"
             onClick={() => handleQuickDemo("imported")}
             title="Load imported confectionery test missing Indian importer & origin disclosures"
           >
-            🍫 Swiss Choco Crunch Wafers (Imported / Missing Origin)
+            {t("demo_choco_wafers")}
           </button>
           <button
             className="demo-chip compliant"
             onClick={() => handleQuickDemo("honey")}
             title="Load verified authentic commodity test"
           >
-            🍯 Himalayan Multi-Floral Honey (Compliant)
+            {t("demo_honey")}
           </button>
         </div>
       </div>
@@ -418,8 +434,8 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <WifiOff size={15} />
             <span>
-              {isOffline ? "📡 Low Connectivity Field Mode" : "🌐 Online Sync Active"} •{" "}
-              <strong>{pendingScansCount}</strong> inspection(s) queued in local encrypted storage
+              {isOffline ? t("low_conn_mode") : t("online_sync_active")} •{" "}
+              <strong>{pendingScansCount}</strong> {t("inspections_queued")}
             </span>
           </div>
           <button
@@ -428,7 +444,7 @@ export default function App() {
             disabled={isSyncing || pendingScansCount === 0}
           >
             <RotateCw size={13} className={isSyncing ? "animate-spin" : ""} />
-            {isSyncing ? "Syncing..." : "Sync to National DB"}
+            {isSyncing ? t("syncing") : t("sync_to_db")}
           </button>
         </div>
       )}
@@ -483,37 +499,36 @@ export default function App() {
                   <div style={{ textAlign: "center", marginBottom: "32px" }}>
                     <div className="hero-badge">
                       <span>⚖️</span>
-                      <span>LEGAL METROLOGY ACT, 2009 • SECTION 15 STATUTORY ENFORCEMENT</span>
+                      <span>{t("livescan_badge")}</span>
                     </div>
                     <motion.h2
                       className="hero-title"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                     >
-                      Real-Time Packaging Authenticity &amp; Statutory Scanner
+                      {t("livescan_title")}
                     </motion.h2>
                     <p className="hero-subtitle">
-                      Point device camera at any pre-packaged commodity. Multi-agent OCR decodes barcodes,
-                      verifies FSSAI 14-digit licenses, inspects expiry integrity, and cross-checks mandatory Rule 6 declarations.
+                      {t("livescan_desc")}
                     </p>
 
                     {/* Telemetry Strip */}
                     <div className="telemetry-strip">
                       <div className="telemetry-item">
                         <span>🎯</span>
-                        <span>Vision: <strong>Gemini 3.6 Flash Multimodal</strong></span>
+                        <span>{t("telemetry_vision")}</span>
                       </div>
                       <div className="telemetry-item">
                         <span>🛡️</span>
-                        <span>FSSAI: <strong>14-Digit FoSCoS Validator</strong></span>
+                        <span>{t("telemetry_fssai")}</span>
                       </div>
                       <div className="telemetry-item">
                         <span>🌐</span>
-                        <span>Registry: <strong>GS1 India DataKart Lookup</strong></span>
+                        <span>{t("telemetry_registry")}</span>
                       </div>
                       <div className="telemetry-item">
                         <span>⚖️</span>
-                        <span>Penalties: <strong>Section 36 &amp; Section 29</strong></span>
+                        <span>{t("telemetry_penalties")}</span>
                       </div>
                     </div>
 
@@ -527,32 +542,31 @@ export default function App() {
                     <div style={{ textAlign: "center", marginBottom: "32px" }}>
                       <div className="hero-badge">
                         <span>📸</span>
-                        <span>RULE 6(1) STATUTORY AUDITOR • MULTIMODAL OCR</span>
+                        <span>{t("upload_badge")}</span>
                       </div>
                       <motion.h2
                         className="hero-title"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                       >
-                        Statutory Packaging Label Inspection
+                        {t("upload_title")}
                       </motion.h2>
                       <p className="hero-subtitle">
-                        Capture or upload packaging labels during market inspections. Multi-agent OCR audits all mandatory
-                        declarations, checks Unit Sale Price (USP) math, and generates court-ready statutory notices.
+                        {t("upload_desc")}
                       </p>
 
                       <div className="telemetry-strip">
                         <div className="telemetry-item">
                           <span>📋</span>
-                          <span>Mandatory: <strong>10 Declarations</strong></span>
+                          <span>{t("telemetry_10_decl")}</span>
                         </div>
                         <div className="telemetry-item">
                           <span>💰</span>
-                          <span>Unit Price: <strong>Rule 6(11) Math</strong></span>
+                          <span>{t("telemetry_usp_math")}</span>
                         </div>
                         <div className="telemetry-item">
                           <span>⚖️</span>
-                          <span>Penalties: <strong>Section 36 Ready</strong></span>
+                          <span>{t("telemetry_s36")}</span>
                         </div>
                       </div>
                     </div>
@@ -563,30 +577,18 @@ export default function App() {
                     <div style={{ textAlign: "center", marginBottom: "32px" }}>
                       <div className="hero-badge">
                         <span>🛒</span>
-                        <span>E-COMMERCE DISCREPANCY AUDITOR • RULE 6(10) ENFORCEMENT</span>
+                        <span>{t("url_badge")}</span>
                       </div>
                       <motion.h2
                         className="hero-title"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                       >
-                        Marketplace Listing &amp; Packaging Auditor
+                        {t("url_title")}
                       </motion.h2>
                       <p className="hero-subtitle">
-                        Audit product listings on Amazon, Flipkart, Blinkit, Zepto, and Swiggy Instamart.
-                        Scrapes structured schema and cross-verifies digital disclosures against physical packaging requirements.
+                        {t("url_desc")}
                       </p>
-
-                      <div className="telemetry-strip">
-                        <div className="telemetry-item">
-                          <span>🏪</span>
-                          <span>Platforms: <strong>Amazon, Blinkit, Zepto, Flipkart</strong></span>
-                        </div>
-                        <div className="telemetry-item">
-                          <span>🔍</span>
-                          <span>Audit: <strong>Digital vs Physical Discrepancy</strong></span>
-                        </div>
-                      </div>
                     </div>
                     <UrlAuditor onSubmit={handleUrlAudit} isLoading={false} />
                   </>
@@ -782,24 +784,22 @@ export default function App() {
                   LMPC Compliance Engine
                 </div>
                 <div style={{ color: "var(--brand)", fontSize: "0.72rem", fontWeight: 700 }}>
-                  Smart India Hackathon (SIH26034) Prototype
+                  {t("footer_prototype_title")}
                 </div>
               </div>
             </div>
             <p style={{ fontSize: "0.78rem", lineHeight: "1.6", color: "var(--muted)", maxWidth: "460px" }}>
-              An automated, multi-agent AI verification prototype designed to audit mandatory packaging
-              declarations under the <strong>Legal Metrology (Packaged Commodities) Rules, 2011</strong> and the
-              <strong> Legal Metrology Act, 2009</strong>. Built as a technical proposal for the Department of Consumer Affairs.
+              {t("footer_desc")}
             </p>
             <div style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <span className="badge-pass">SIH26034 Prototype</span>
-              <span className="badge-pass">GIGW 3.0 UX Standards</span>
-              <span className="badge-pass">Multi-Agent AI</span>
+              <span className="badge-pass">{t("masthead_prototype_badge")}</span>
+              <span className="badge-pass">{t("badge_gigw")}</span>
+              <span className="badge-pass">{t("badge_multiagent")}</span>
             </div>
           </div>
 
           <div className="gov-footer-col">
-            <h4>Statutory Reference Portals</h4>
+            <h4>{t("footer_portals_title")}</h4>
             <ul>
               <li>
                 <a href="https://consumerhelpline.gov.in" target="_blank" rel="noreferrer" className="flex items-center gap-1">
@@ -825,7 +825,7 @@ export default function App() {
           </div>
 
           <div className="gov-footer-col">
-            <h4>Statutory Acts &amp; Enforcements</h4>
+            <h4>{t("footer_acts_title")}</h4>
             <ul>
               <li>
                 <span className="text-xs text-slate-400">The Legal Metrology Act, 2009</span>
@@ -844,12 +844,8 @@ export default function App() {
         </div>
 
         <div className="gov-footer-bottom">
-          <div>
-            🇮🇳 Smart India Hackathon (SIH26034) Innovation Project • Proposed to Department of Consumer Affairs
-          </div>
-          <div>
-            Demonstration &amp; Evaluation Sandbox • Designed with GovTech UI/UX Principles
-          </div>
+          <div>{t("footer_copy_left")}</div>
+          <div>{t("footer_copy_right")}</div>
         </div>
       </footer>
     </div>
