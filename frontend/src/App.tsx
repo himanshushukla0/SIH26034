@@ -10,10 +10,10 @@ import {
   ScanLine,
   ImagePlus,
   Phone,
-  UserCheck,
   Sparkles,
   ExternalLink,
   ShieldAlert,
+  Scale,
 } from "lucide-react";
 
 import "./styles/globals.css";
@@ -35,38 +35,25 @@ import {
 
 type TabKey = "livescan" | "scanner" | "url" | "analytics";
 
-/** Ashoka Lion Capital (State Emblem of India) Vector Component */
-function AshokaEmblem() {
+/** Legal Metrology AI Emblem / Scale & Shield Brand Logo */
+function LmpcBrandLogo() {
   return (
-    <svg
-      className="ashoka-emblem-svg"
-      viewBox="0 0 100 120"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-label="State Emblem of India"
+    <div
+      style={{
+        width: "44px",
+        height: "44px",
+        borderRadius: "10px",
+        background: "linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(14, 165, 233, 0.15) 100%)",
+        border: "1.5px solid #38bdf8",
+        boxShadow: "0 0 16px rgba(56, 189, 248, 0.25)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
     >
-      {/* Golden / Bronze State Emblem Silhouette */}
-      <path
-        d="M50 8C43 8 38 12 36 17C33 16 29 17 26 21C22 25 22 31 24 36C21 38 18 42 19 47C20 52 24 55 28 56C29 64 34 71 42 75V85H30C28 85 26 87 26 89V94C26 95 27 96 28 96H72C73 96 74 95 74 94V89C74 87 72 85 70 85H58V75C66 71 71 64 72 56C76 55 80 52 81 47C82 42 79 38 76 36C78 31 78 25 74 21C71 17 67 16 64 17C62 12 57 8 50 8Z"
-        fill="#D4AF37"
-        opacity="0.95"
-      />
-      {/* Ashoka Chakra Wheel */}
-      <circle cx="50" cy="89" r="4.5" stroke="#000080" strokeWidth="1.2" fill="#FFFFFF" />
-      {/* Satyameva Jayate Banner */}
-      <rect x="20" y="100" width="60" height="12" rx="2" fill="#1e293b" stroke="#d4af37" strokeWidth="0.8" />
-      <text
-        x="50"
-        y="108.5"
-        textAnchor="middle"
-        fill="#f59e0b"
-        fontSize="6.8"
-        fontWeight="bold"
-        fontFamily="'Inter', sans-serif"
-      >
-        सत्यमेव जयते
-      </text>
-    </svg>
+      <Scale size={24} color="#38bdf8" />
+    </div>
   );
 }
 
@@ -226,12 +213,12 @@ export default function App() {
         fontSize: fontSizeOffset === 1 ? "1.05rem" : fontSizeOffset === -1 ? "0.9rem" : "1rem",
       }}
     >
-      {/* 1. National Accessibility & Citizen Helpline Bar */}
+      {/* 1. GovTech Accessibility & SIH Innovation Bar */}
       <div className="top-accessibility-bar">
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          <span>🇮🇳 <strong>भारत सरकार</strong> | Government of India</span>
+          <span>🇮🇳 <strong>Smart India Hackathon</strong> | SIH26034 Innovation Prototype</span>
           <span style={{ color: "var(--border)" }}>|</span>
-          <span>उपभोक्ता मामले विभाग • Department of Consumer Affairs</span>
+          <span style={{ color: "var(--gov-gold)", fontWeight: 600 }}>Proposal for Department of Consumer Affairs</span>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "1.2rem" }}>
@@ -306,18 +293,18 @@ export default function App() {
       {/* 2. Indian National Tricolor Strip */}
       <div className="tricolor-strip" />
 
-      {/* 3. Official Ministry & AI Masthead */}
+      {/* 3. GovTech Prototype Masthead */}
       <header className="app-header">
         <div className="masthead-inner">
           <div className="brand-section">
-            <AshokaEmblem />
+            <LmpcBrandLogo />
             <div className="brand-titles">
-              <span className="brand-hindi">उपभोक्ता मामले, खाद्य और सार्वजनिक वितरण मंत्रालय</span>
-              <span className="brand-english">Ministry of Consumer Affairs, Food &amp; Public Distribution</span>
+              <span className="brand-hindi">विधिक मापविज्ञान (पैकेज्ड कमोडिटीज) अनुपालन प्रणाली</span>
+              <span className="brand-english">AUTOMATED LMPC COMPLIANCE ENGINE</span>
               <span className="brand-sub">
-                <span>विधिक मापविज्ञान प्रभाग</span>
+                <span className="badge-sih">SIH26034 PROTOTYPE</span>
                 <span>•</span>
-                <span>Automated LMPC Compliance Engine (SIH26034)</span>
+                <span>Proposed AI Solution for Department of Consumer Affairs</span>
               </span>
             </div>
           </div>
@@ -325,10 +312,10 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <div className="officer-badge-box">
               <div className="name flex items-center gap-1.5 justify-end">
-                <UserCheck size={14} className="text-sky-400" />
-                <span>Legal Metrology Officer</span>
+                <ShieldCheck size={14} className="text-sky-400" />
+                <span>Auditor Cockpit View</span>
               </div>
-              <div className="dept">Station #HQ-DL-26034</div>
+              <div className="dept">SIH Live Demonstration Sandbox</div>
             </div>
 
             <div className="ai-status-pill">
@@ -784,25 +771,35 @@ export default function App() {
         )}
       </main>
 
-      {/* 8. Official Government of India Footer */}
+      {/* 8. GovTech SIH26034 Prototype Footer */}
       <footer className="gov-footer">
         <div className="gov-footer-top">
           <div className="gov-footer-col">
-            <h4>Department of Consumer Affairs</h4>
+            <div className="flex items-center gap-2 mb-2">
+              <LmpcBrandLogo />
+              <div>
+                <div style={{ color: "#fff", fontWeight: 800, fontSize: "0.92rem", lineHeight: "1.2" }}>
+                  LMPC Compliance Engine
+                </div>
+                <div style={{ color: "var(--brand)", fontSize: "0.72rem", fontWeight: 700 }}>
+                  Smart India Hackathon (SIH26034) Prototype
+                </div>
+              </div>
+            </div>
             <p style={{ fontSize: "0.78rem", lineHeight: "1.6", color: "var(--muted)", maxWidth: "460px" }}>
-              National Portal for Automated Verification of Mandatory Declarations under the
-              <strong> Legal Metrology (Packaged Commodities) Rules, 2011</strong> and the
-              <strong> Legal Metrology Act, 2009</strong>. Built for Smart India Hackathon (SIH26034).
+              An automated, multi-agent AI verification prototype designed to audit mandatory packaging
+              declarations under the <strong>Legal Metrology (Packaged Commodities) Rules, 2011</strong> and the
+              <strong> Legal Metrology Act, 2009</strong>. Built as a technical proposal for the Department of Consumer Affairs.
             </p>
             <div style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <span className="badge-pass">GIGW 3.0 Compliant</span>
-              <span className="badge-pass">256-Bit SSL</span>
-              <span className="badge-pass">SIH Finalist</span>
+              <span className="badge-pass">SIH26034 Prototype</span>
+              <span className="badge-pass">GIGW 3.0 UX Standards</span>
+              <span className="badge-pass">Multi-Agent AI</span>
             </div>
           </div>
 
           <div className="gov-footer-col">
-            <h4>National Consumer Portals</h4>
+            <h4>Statutory Reference Portals</h4>
             <ul>
               <li>
                 <a href="https://consumerhelpline.gov.in" target="_blank" rel="noreferrer" className="flex items-center gap-1">
@@ -828,7 +825,7 @@ export default function App() {
           </div>
 
           <div className="gov-footer-col">
-            <h4>Statutory Acts &amp; Rules</h4>
+            <h4>Statutory Acts &amp; Enforcements</h4>
             <ul>
               <li>
                 <span className="text-xs text-slate-400">The Legal Metrology Act, 2009</span>
@@ -848,10 +845,10 @@ export default function App() {
 
         <div className="gov-footer-bottom">
           <div>
-            🇮🇳 Government of India • Ministry of Consumer Affairs, Food &amp; Public Distribution
+            🇮🇳 Smart India Hackathon (SIH26034) Innovation Project • Proposed to Department of Consumer Affairs
           </div>
           <div>
-            SIH26034 AI Multi-Agent Compliance Engine • All Rights Reserved 2026
+            Demonstration &amp; Evaluation Sandbox • Designed with GovTech UI/UX Principles
           </div>
         </div>
       </footer>

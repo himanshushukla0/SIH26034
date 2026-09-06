@@ -105,7 +105,7 @@ export default function AuditReport({
       >
         <div>
           <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#38bdf8", fontWeight: 700 }}>
-            🏛️ Government of India • Ministry of Consumer Affairs, Food & Public Distribution
+            ⚖️ Statutory Legal Metrology Compliance Audit • Department of Consumer Affairs Guidelines (SIH26034)
           </div>
           <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)", marginTop: "2px" }}>
             Statutory Legal Metrology Compliance Audit • The Legal Metrology Act, 2009 (Act No. 1 of 2010)

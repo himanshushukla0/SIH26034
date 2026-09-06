@@ -127,12 +127,21 @@ body {
   align-items: center;
   gap: 14px;
 }
-
-.ashoka-emblem-svg {
+.brand-logo-badge {
   width: 44px;
-  height: 52px;
+  height: 44px;
   flex-shrink: 0;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+}
+
+.badge-sih {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }
 
 .brand-titles {
