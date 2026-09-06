@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: sih26034-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.app:app --host 0.0.0.0 --port $PORT
+    plan: free
+    region: oregon
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./lmpc_audits.db
+      - key: FRONTEND_URL
+        value: "*"
