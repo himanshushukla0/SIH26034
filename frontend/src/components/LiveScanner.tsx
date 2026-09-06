@@ -20,11 +20,13 @@ import {
   Search,
   Crosshair,
   Radio,
+  CheckCircle2,
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { scanPackage } from "../api";
 import type { AuditResponse } from "../api";
 import { useLanguage } from "../context/LanguageContext";
+import { playScanSuccessFeedback } from "../utils/hapticsAndSound";
 
 interface LiveScannerProps {
   onScanComplete: (result: AuditResponse) => void;
@@ -68,7 +70,7 @@ const DEMO_PRODUCTS = [
 ];
 
 export default function LiveScanner({ onScanComplete, onError }: LiveScannerProps) {
-  const { t } = useLanguage();
+  const { lang, t } = useLanguage();
   const [isScanning, setIsScanning] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastBarcode, setLastBarcode] = useState<string | null>(null);
@@ -150,9 +152,8 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
           setScanStatus("detected");
           setLastBarcode(decodedText);
 
-          if ("vibrate" in navigator) {
-            navigator.vibrate([100, 50, 100]);
-          }
+          // 1. Paytm / GPay instant tactile feedback (Double-pulse vibration + audio chime)
+          playScanSuccessFeedback();
 
           let imageBlob: Blob = new Blob([], { type: "image/jpeg" });
           try {
@@ -172,6 +173,9 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
           } catch {
             // Frame capture fallback
           }
+
+          // 2. Pause 550ms so user experiences the green scan feedback, vibration, and chime
+          await new Promise((resolve) => setTimeout(resolve, 550));
 
           try {
             await scanner.stop();
@@ -251,19 +255,19 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
           overflow: "hidden",
           position: "relative",
           background: "#0f172a",
-          border: "2px solid #cbd5e1",
-          boxShadow: "var(--shadow-card)",
-          transition: "all 0.3s ease",
+          border: scanStatus === "detected" ? "3px solid #10b981" : "2px solid #cbd5e1",
+          boxShadow: scanStatus === "detected" ? "0 0 35px rgba(16, 185, 129, 0.75)" : "var(--shadow-card)",
+          transition: "all 0.25s ease",
         }}
         animate={{
-          scale: scanStatus === "detected" ? 1.01 : 1,
+          scale: scanStatus === "detected" ? 1.02 : 1,
         }}
       >
         {/* Reticle Corner Brackets */}
-        <div className="hud-corner hud-corner-tl" style={{ borderColor: "#38bdf8" }} />
-        <div className="hud-corner hud-corner-tr" style={{ borderColor: "#38bdf8" }} />
-        <div className="hud-corner hud-corner-bl" style={{ borderColor: "#38bdf8" }} />
-        <div className="hud-corner hud-corner-br" style={{ borderColor: "#38bdf8" }} />
+        <div className="hud-corner hud-corner-tl" style={{ borderColor: scanStatus === "detected" ? "#10b981" : "#38bdf8" }} />
+        <div className="hud-corner hud-corner-tr" style={{ borderColor: scanStatus === "detected" ? "#10b981" : "#38bdf8" }} />
+        <div className="hud-corner hud-corner-bl" style={{ borderColor: scanStatus === "detected" ? "#10b981" : "#38bdf8" }} />
+        <div className="hud-corner hud-corner-br" style={{ borderColor: scanStatus === "detected" ? "#10b981" : "#38bdf8" }} />
 
         {/* Viewfinder Telemetry Bar */}
         <div
@@ -376,6 +380,68 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
             </p>
           </div>
         )}
+
+        {/* Paytm-Style Instant Barcode Captured Affirmation Overlay */}
+        <AnimatePresence>
+          {scanStatus === "detected" && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(6, 78, 59, 0.88)",
+                backdropFilter: "blur(6px)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.85rem",
+                zIndex: 40,
+                color: "#ffffff",
+              }}
+            >
+              <motion.div
+                initial={{ scale: 0, rotate: -20 }}
+                animate={{ scale: [0, 1.25, 1], rotate: 0 }}
+                transition={{ duration: 0.32, ease: "easeOut" }}
+                style={{
+                  width: "72px",
+                  height: "72px",
+                  borderRadius: "50%",
+                  background: "#10b981",
+                  boxShadow: "0 0 35px rgba(16, 185, 129, 0.9)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <CheckCircle2 size={44} color="#ffffff" />
+              </motion.div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "1.15rem", fontWeight: 800, letterSpacing: "0.03em" }}>
+                  {lang === "hi" ? "बारकोड सफलतापूर्वक कैप्चर!" : "BARCODE CAPTURED!"}
+                </div>
+                <div
+                  style={{
+                    fontSize: "0.9rem",
+                    fontFamily: "var(--font-mono)",
+                    color: "#a7f3d0",
+                    fontWeight: 700,
+                    marginTop: "3px",
+                  }}
+                >
+                  {lastBarcode}
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "#d1fae5", marginTop: "4px" }}>
+                  {lang === "hi" ? "वैधानिक अनुपालन विश्लेषण प्रारंभ..." : "Proceeding to Statutory Verification..."}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Processing State Overlay */}
         <AnimatePresence>
@@ -508,7 +574,12 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
           onSubmit={(e) => {
             e.preventDefault();
             if (manualInput.trim()) {
-              runVerification(manualInput.trim());
+              setLastBarcode(manualInput.trim());
+              setScanStatus("detected");
+              playScanSuccessFeedback();
+              setTimeout(() => {
+                runVerification(manualInput.trim());
+              }, 500);
             }
           }}
           style={{ display: "flex", gap: "0.65rem" }}
@@ -552,7 +623,14 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
           {DEMO_PRODUCTS.map((prod) => (
             <button
               key={prod.barcode}
-              onClick={() => runVerification(prod.barcode)}
+              onClick={() => {
+                setLastBarcode(prod.barcode);
+                setScanStatus("detected");
+                playScanSuccessFeedback();
+                setTimeout(() => {
+                  runVerification(prod.barcode);
+                }, 500);
+              }}
               disabled={isProcessing}
               className="gov-card"
               style={{

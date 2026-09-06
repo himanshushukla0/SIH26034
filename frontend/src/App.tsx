@@ -33,6 +33,7 @@ import {
   syncAllPendingScans,
 } from "./utils/offlineQueue";
 import { useLanguage } from "./context/LanguageContext";
+import { playScanSuccessFeedback } from "./utils/hapticsAndSound";
 
 type TabKey = "livescan" | "scanner" | "url" | "analytics";
 
@@ -174,6 +175,7 @@ export default function App() {
 
   /** Quick Test Demonstration Trigger (for Instant Teammate & Judge Showcase) */
   const handleQuickDemo = (sampleType: "compliant" | "violation" | "imported" | "honey") => {
+    playScanSuccessFeedback();
     setError(null);
     setIsLoading(true);
     setLoadingStage("Synthesizing statutory LMPC multi-agent compliance evaluation...");
