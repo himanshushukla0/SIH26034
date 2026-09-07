@@ -142,12 +142,12 @@ async def persist_audit_result(
                 )
                 violation = Violation(
                     audit_id=audit_id,
-                    rule_reference=v.get("rule_reference", "Rule 6 - LM(PC) Rules, 2011"),
-                    act_section=v.get("act_section", "Section 18(1) - Legal Metrology Act, 2009"),
-                    punishment_section=v.get("punishment_section", "Section 36(1) - Legal Metrology Act, 2009"),
+                    rule_reference=str(v.get("rule_reference", "Rule 6 - LM(PC) Rules, 2011"))[:150],
+                    act_section=str(v.get("act_section", "Section 18(1) - Legal Metrology Act, 2009"))[:150] if v.get("act_section") else None,
+                    punishment_section=str(v.get("punishment_section", "Section 36(1) - Legal Metrology Act, 2009"))[:150] if v.get("punishment_section") else None,
                     statutory_penalty=v.get("statutory_penalty"),
                     legal_proof_summary=v.get("legal_proof_summary"),
-                    field_name=v.get("field_name", "Declaration"),
+                    field_name=str(v.get("field_name", "Declaration"))[:100],
                     severity=sev_enum,
                     description=v.get("description", ""),
                     expected_value=v.get("expected_value"),
@@ -551,15 +551,42 @@ async def scan_package(
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid base64 image: {e}")
 
-    if not image_bytes or len(image_bytes) == 0:
-        raise HTTPException(status_code=400, detail="No image provided. Send file or image_base64.")
+    clean_barcode = barcode.strip() if barcode and barcode.strip() else None
 
-    if len(image_bytes) > 20 * 1024 * 1024:
+    if not clean_barcode and (not image_bytes or len(image_bytes) == 0):
+        raise HTTPException(
+            status_code=400,
+            detail="No input provided. Send a barcode number or an image.",
+        )
+
+    if image_bytes and len(image_bytes) > 20 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Image too large. Max 20 MB.")
 
-    logger.info("📱 Live scan request: %d bytes, barcode=%s", len(image_bytes), barcode or "(auto-detect)")
+    logger.info(
+        "📱 Live scan request: bytes=%s, barcode=%s",
+        len(image_bytes) if image_bytes else 0,
+        clean_barcode or "(auto-detect)",
+    )
 
-    # --- Image Gate Enforcement (SIH26034) ---
+    # 1. If barcode is already provided (scanned or entered by user), run tailored barcode audit
+    if clean_barcode:
+        try:
+            result = await verification_agent.audit_by_barcode(
+                barcode=clean_barcode,
+                image_bytes=image_bytes,
+            )
+            audit_id = await persist_audit_result(
+                result=result,
+                input_type="camera",
+            )
+            result["audit_id"] = audit_id
+            result["report_url"] = f"/api/report/html/{audit_id}"
+            return JSONResponse(content=result)
+        except Exception as e:
+            logger.exception("Barcode audit failed: %s", e)
+            raise HTTPException(status_code=500, detail=f"Barcode audit failed: {e}")
+
+    # 2. Otherwise image was provided without barcode: pass through Image Gate
     temp_upload_dir = Path("backend/uploads")
     temp_upload_dir.mkdir(parents=True, exist_ok=True)
     temp_file = temp_upload_dir / f"scan_gate_{uuid.uuid4().hex}.jpg"
@@ -588,9 +615,22 @@ async def scan_package(
                 },
             )
 
-        # If barcode was decoded by gate and not provided by caller, seed it
-        if not barcode and gate_result.get("barcode", {}).get("barcode"):
-            barcode = gate_result["barcode"]["barcode"]
+        # If barcode was decoded by gate from the packaging image, audit by barcode!
+        detected_barcode = gate_result.get("barcode", {}).get("barcode")
+        if detected_barcode:
+            logger.info("🎯 Gate auto-decoded barcode from image: %s", detected_barcode)
+            result = await verification_agent.audit_by_barcode(
+                barcode=detected_barcode,
+                image_bytes=image_bytes,
+            )
+            audit_id = await persist_audit_result(
+                result=result,
+                input_type="camera",
+            )
+            result["audit_id"] = audit_id
+            result["report_url"] = f"/api/report/html/{audit_id}"
+            return JSONResponse(content=result)
+
     finally:
         if temp_file.exists():
             try:
@@ -598,22 +638,12 @@ async def scan_package(
             except Exception:
                 pass
 
+    # 3. If image passed gate but no 1D barcode was detected, run multimodal image audit
     try:
         result = await run_image_audit(image_bytes=image_bytes)
 
         if result.get("error"):
             raise HTTPException(status_code=500, detail=result["error"])
-
-        # If barcode was pre-decoded by the frontend, inject it into extractions
-        if barcode and result.get("extractions"):
-            existing_barcode = result["extractions"].get("barcode_number")
-            if not existing_barcode or (
-                isinstance(existing_barcode, dict) and not existing_barcode.get("value")
-            ):
-                result["extractions"]["barcode_number"] = {
-                    "value": barcode,
-                    "confidence": 0.99,
-                }
 
         audit_id = await persist_audit_result(
             result=result,

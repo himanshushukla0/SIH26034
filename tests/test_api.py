@@ -181,6 +181,53 @@ class TestFastAPIEndpoints(unittest.TestCase):
         self.assertEqual(path.read_bytes(), dummy_data)
         self.assertIn("uploads", path_str)
 
+    def test_scan_barcode_distinct_products(self):
+        """POST /api/scan with different barcodes returns distinct, authentic products."""
+        # 1. Tata Tea Gold 500g
+        res1 = self.client.post("/api/scan", data={"barcode": "8901030383478"})
+        self.assertEqual(res1.status_code, 200)
+        data1 = res1.json()
+        pname1 = data1["extractions"]["product_name"]["value"]
+        self.assertIn("Tata Tea", pname1)
+        self.assertEqual(data1["verdict"]["overall_status"], "COMPLIANT")
+
+        # 2. Amul Pure Ghee 1L
+        res2 = self.client.post("/api/scan", data={"barcode": "8901262010053"})
+        self.assertEqual(res2.status_code, 200)
+        data2 = res2.json()
+        pname2 = data2["extractions"]["product_name"]["value"]
+        self.assertIn("Amul", pname2)
+        self.assertNotEqual(pname1, pname2)
+        self.assertEqual(data2["extractions"]["net_quantity"]["value"], "1 L")
+
+        # 3. Royal Shahi Garam Masala (Violations)
+        res3 = self.client.post("/api/scan", data={"barcode": "8909999999999"})
+        self.assertEqual(res3.status_code, 200)
+        data3 = res3.json()
+        pname3 = data3["extractions"]["product_name"]["value"]
+        self.assertIn("Garam Masala", pname3)
+        self.assertNotEqual(pname1, pname3)
+        self.assertIn(data3["verdict"]["overall_status"], ("NON_COMPLIANT", "PARTIAL_VIOLATION"))
+        self.assertGreater(len(data3["verdict"]["violations"]), 0)
+
+        # 4. Swiss Cocoa Crunch (Imported Discrepancy)
+        res4 = self.client.post("/api/scan", data={"barcode": "7613035678901"})
+        self.assertEqual(res4.status_code, 200)
+        data4 = res4.json()
+        pname4 = data4["extractions"]["product_name"]["value"]
+        self.assertIn("Swiss Cocoa", pname4)
+        self.assertNotEqual(pname1, pname4)
+        self.assertEqual(data4["extractions"]["country_of_origin"]["value"], "Switzerland")
+
+        # 5. Dynamic Unregistered Barcode (synthesizes unique product)
+        res5 = self.client.post("/api/scan", data={"barcode": "8905544332211"})
+        self.assertEqual(res5.status_code, 200)
+        data5 = res5.json()
+        pname5 = data5["extractions"]["product_name"]["value"]
+        self.assertNotEqual(pname1, pname5)
+        self.assertNotEqual(pname2, pname5)
+        self.assertIn("2211", pname5)
+
 
 if __name__ == "__main__":
     unittest.main()

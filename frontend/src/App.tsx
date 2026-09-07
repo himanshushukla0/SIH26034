@@ -183,13 +183,13 @@ export default function App() {
     setTimeout(() => {
       let res: AuditResponse;
       if (sampleType === "compliant") {
-        res = getFallbackAuditResult("image", "Tata Tea Gold 500g");
+        res = getFallbackAuditResult("camera", "8901030383478"); // Tata Tea Gold 500g
       } else if (sampleType === "violation") {
-        res = getFallbackAuditResult("image", "Royal Shahi Garam Masala (Violations)");
+        res = getFallbackAuditResult("camera", "8909999999999"); // Royal Shahi Garam Masala (Violations)
       } else if (sampleType === "imported") {
-        res = getFallbackAuditResult("image", "Swiss Choco Crunch (Imported)");
+        res = getFallbackAuditResult("camera", "7613035678901"); // Swiss Cocoa Crunch (Imported)
       } else {
-        res = getFallbackAuditResult("image", "Himalayan Raw Multi-Floral Honey");
+        res = getFallbackAuditResult("camera", "8901030012345"); // Himalayan Honey
       }
 
       setResult(res);

@@ -26,6 +26,8 @@ import {
   SwitchCamera,
   Sparkles,
   RefreshCw,
+  Zap,
+  ZapOff,
 } from "lucide-react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { scanPackage, auditImage } from "../api";
@@ -94,8 +96,12 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
   // Multiple camera selection state
   const [availableCameras, setAvailableCameras] = useState<CameraDevice[]>([]);
   const [currentCameraId, setCurrentCameraId] = useState<string | null>(null);
+  const [hasTorch, setHasTorch] = useState(false);
+  const [isTorchOn, setIsTorchOn] = useState(false);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const nativeDetectorRef = useRef<any>(null);
+  const nativeScanTimerRef = useRef<number | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processingLockRef = useRef(false);
@@ -137,8 +143,32 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
     [lang, onScanComplete, onError]
   );
 
+  /** Toggle torch / flashlight if supported by active camera. */
+  const toggleTorch = useCallback(async () => {
+    try {
+      const videoElem = videoContainerRef.current?.querySelector("video") as HTMLVideoElement | null;
+      if (videoElem && videoElem.srcObject) {
+        const stream = videoElem.srcObject as MediaStream;
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          const nextState = !isTorchOn;
+          await (track as any).applyConstraints({
+            advanced: [{ torch: nextState }],
+          });
+          setIsTorchOn(nextState);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not toggle camera torch:", err);
+    }
+  }, [isTorchOn]);
+
   /** Stop scanner safely. */
   const stopScanner = useCallback(async () => {
+    if (nativeScanTimerRef.current) {
+      clearTimeout(nativeScanTimerRef.current);
+      nativeScanTimerRef.current = null;
+    }
     if (scannerRef.current) {
       try {
         if (scannerRef.current.isScanning) {
@@ -149,6 +179,7 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
       }
       scannerRef.current = null;
     }
+    setIsTorchOn(false);
     setIsScanning(false);
     setScanStatus("idle");
   }, []);
@@ -186,16 +217,21 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
       }
 
       // Visual pause so officer experiences affirmative green flash and vibration
-      await new Promise((resolve) => setTimeout(resolve, 550));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Stop camera before processing heavy verification
       try {
+        if (nativeScanTimerRef.current) {
+          clearTimeout(nativeScanTimerRef.current);
+          nativeScanTimerRef.current = null;
+        }
         if (scannerRef.current && scannerRef.current.isScanning) {
           await scannerRef.current.stop();
         }
       } catch {
         // Ignore
       }
+      setIsTorchOn(false);
       setIsScanning(false);
 
       await runVerification(decodedText, imageBlob);
@@ -230,7 +266,7 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
         const cameraToUse = targetCameraId || { facingMode: "environment" };
         setCurrentCameraId(targetCameraId || null);
 
-        // 2. Create scanner instance with high-speed barcode format support & native engine
+        // 2. Create scanner instance with high-speed 1D barcode format support & native engine
         const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, {
           formatsToSupport: [
             Html5QrcodeSupportedFormats.EAN_13,
@@ -249,10 +285,20 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
         });
         scannerRef.current = scanner;
 
-        // Omit qrbox so html5-qrcode scans the FULL frame and never crashes on small screens
+        // Targeted horizontal qrbox specifically optimized for 1D barcodes
         const scanConfig = {
-          fps: 20,
+          fps: 12, // 12-15 fps leaves CPU bandwidth for crisp decoding
           aspectRatio: 16 / 9,
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const w = Math.min(Math.floor(viewfinderWidth * 0.88), 460);
+            const h = Math.min(Math.floor(viewfinderHeight * 0.45), 180);
+            return { width: Math.max(w, 240), height: Math.max(h, 90) };
+          },
+          videoConstraints: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
+          },
         };
 
         try {
@@ -275,7 +321,68 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
 
         setIsScanning(true);
 
-        // Enumerate devices in background without disrupting active video stream
+        // 3. Hardware-accelerated native BarcodeDetector loop (parallel boost)
+        if (typeof window !== "undefined" && "BarcodeDetector" in window) {
+          try {
+            nativeDetectorRef.current = new (window as any).BarcodeDetector({
+              formats: [
+                "ean_13",
+                "ean_8",
+                "upc_a",
+                "upc_e",
+                "code_128",
+                "code_39",
+                "qr_code",
+                "data_matrix",
+              ],
+            });
+
+            const checkNativeBarcode = async () => {
+              if (processingLockRef.current || !scannerRef.current) return;
+              const videoElem = videoContainerRef.current?.querySelector("video") as HTMLVideoElement | null;
+              if (videoElem && videoElem.readyState >= 2 && videoElem.videoWidth > 0) {
+                try {
+                  const detected = await nativeDetectorRef.current.detect(videoElem);
+                  if (detected && detected.length > 0 && detected[0].rawValue) {
+                    const code = String(detected[0].rawValue).trim();
+                    if (code && !processingLockRef.current) {
+                      handleBarcodeDecoded(code);
+                      return;
+                    }
+                  }
+                } catch {
+                  // Ignore frame decode miss
+                }
+              }
+              nativeScanTimerRef.current = window.setTimeout(checkNativeBarcode, 75);
+            };
+
+            nativeScanTimerRef.current = window.setTimeout(checkNativeBarcode, 350);
+          } catch (e) {
+            console.debug("Native BarcodeDetector loop skipped:", e);
+          }
+        }
+
+        // 4. Check for torch / flashlight capability on active stream
+        setTimeout(() => {
+          try {
+            const videoElem = videoContainerRef.current?.querySelector("video") as HTMLVideoElement | null;
+            if (videoElem && videoElem.srcObject) {
+              const stream = videoElem.srcObject as MediaStream;
+              const track = stream.getVideoTracks()[0];
+              if (track) {
+                const caps: any = (track as any).getCapabilities?.() || {};
+                if (caps.torch) {
+                  setHasTorch(true);
+                }
+              }
+            }
+          } catch {
+            // ignore capability check failure
+          }
+        }, 500);
+
+        // 5. Enumerate devices in background without disrupting active video stream
         try {
           if (navigator.mediaDevices?.enumerateDevices) {
             const allDevs = await navigator.mediaDevices.enumerateDevices();
@@ -404,9 +511,9 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
           setLastBarcode(decodedBarcode);
           await runVerification(decodedBarcode, file);
         } else {
-          // Direct multimodal vision audit
-          setProcessingStage(lang === "hi" ? "विधिक मापविज्ञान नियम 6 अनिवार्य घोषणाओं की जांच..." : "Evaluating Legal Metrology Act Rule 6 declarations...");
-          const auditResult = await auditImage(file);
+          // Pass to scanPackage: backend checks image gate with OpenCV/ZXing for barcode first!
+          setProcessingStage(lang === "hi" ? "छवि में बारकोड एवं वैधानिक घोषणाओं की खोज..." : "Analyzing packaging image for barcodes & mandatory declarations...");
+          const auditResult = await scanPackage(file);
           setScanStatus("success");
           onScanComplete(auditResult);
         }
@@ -436,6 +543,10 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (nativeScanTimerRef.current) {
+        clearTimeout(nativeScanTimerRef.current);
+        nativeScanTimerRef.current = null;
+      }
       if (scannerRef.current) {
         try {
           if (scannerRef.current.isScanning) {
@@ -503,6 +614,19 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
           <div className="scan-laser-line" />
         )}
 
+        {/* Targeted Horizontal 1D Barcode Aiming Reticle with Red Laser */}
+        {isScanning && !isProcessing && scanStatus !== "detected" && (
+          <div className="scan-reticle-box">
+            <div style={{ fontSize: "0.68rem", color: "#38bdf8", fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+              {lang === "hi" ? "बारकोड को इस बॉक्स में रखें" : "Align 1D Barcode Here"}
+            </div>
+            <div className="scan-laser-line-horizontal" />
+            <div style={{ fontSize: "0.62rem", color: "#cbd5e1", fontFamily: "var(--font-mono)" }}>
+              EAN-13 • UPC • CODE 128
+            </div>
+          </div>
+        )}
+
         {/* Viewfinder Telemetry Bar */}
         <div
           style={{
@@ -537,6 +661,29 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", pointerEvents: "auto" }}>
+            {hasTorch && isScanning && (
+              <button
+                onClick={toggleTorch}
+                title={isTorchOn ? "Turn Off Flashlight" : "Turn On Flashlight"}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.3rem",
+                  background: isTorchOn ? "#f59e0b" : "rgba(15, 23, 42, 0.85)",
+                  color: isTorchOn ? "#0f172a" : "#f59e0b",
+                  border: "1px solid #f59e0b",
+                  padding: "0.25rem 0.55rem",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "0.72rem",
+                  fontWeight: 700,
+                }}
+              >
+                {isTorchOn ? <ZapOff size={13} /> : <Zap size={13} />}
+                <span>{isTorchOn ? "Torch On" : "Torch"}</span>
+              </button>
+            )}
+
             {availableCameras.length > 1 && isScanning && (
               <button
                 onClick={switchCamera}

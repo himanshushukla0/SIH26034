@@ -1021,3 +1021,50 @@ body {
   pointer-events: none;
   z-index: 14;
 }
+
+@keyframes laserSweepHorizontal {
+  0% {
+    top: 20%;
+    opacity: 0.85;
+  }
+  50% {
+    top: 80%;
+    opacity: 1;
+  }
+  100% {
+    top: 20%;
+    opacity: 0.85;
+  }
+}
+
+.scan-laser-line-horizontal {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  height: 2.5px;
+  background: linear-gradient(90deg, transparent 0%, #ef4444 15%, #ef4444 85%, transparent 100%);
+  box-shadow: 0 0 10px #ef4444, 0 0 18px #dc2626;
+  animation: laserSweepHorizontal 1.6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.scan-reticle-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 85%;
+  max-width: 440px;
+  height: 140px;
+  border: 2px dashed rgba(56, 189, 248, 0.8);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 13;
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+}
