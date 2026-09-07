@@ -226,31 +226,11 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
           scannerRef.current = null;
         }
 
-        // 1. Enumerate cameras
-        let cameras: CameraDevice[] = [];
-        try {
-          const devices = await Html5Qrcode.getCameras();
-          if (devices && devices.length > 0) {
-            cameras = devices.map((d) => ({ id: d.id, label: d.label || `Camera ${d.id.slice(0, 5)}` }));
-            setAvailableCameras(cameras);
-          }
-        } catch {
-          // Camera enumeration not supported or permission pending
-        }
+        // 1. Direct camera start without double getUserMedia call
+        const cameraToUse = targetCameraId || { facingMode: "environment" };
+        setCurrentCameraId(targetCameraId || null);
 
-        // 2. Select camera ID or facing mode
-        let cameraToUse: string | { facingMode: string } = { facingMode: "environment" };
-        if (targetCameraId) {
-          cameraToUse = targetCameraId;
-          setCurrentCameraId(targetCameraId);
-        } else if (cameras.length > 0) {
-          const rearCam = cameras.find((c) => /back|rear|environment/i.test(c.label));
-          const selected = rearCam || cameras[0];
-          cameraToUse = selected.id;
-          setCurrentCameraId(selected.id);
-        }
-
-        // 3. Create scanner instance with high-speed barcode format support & native engine
+        // 2. Create scanner instance with high-speed barcode format support & native engine
         const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, {
           formatsToSupport: [
             Html5QrcodeSupportedFormats.EAN_13,
@@ -269,17 +249,9 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
         });
         scannerRef.current = scanner;
 
-        // Dynamic responsive qrbox size
+        // Omit qrbox so html5-qrcode scans the FULL frame and never crashes on small screens
         const scanConfig = {
           fps: 20,
-          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const width = Math.floor(Math.min(viewfinderWidth * 0.85, 480));
-            const height = Math.floor(Math.min(viewfinderHeight * 0.70, 260));
-            return {
-              width: Math.max(width, 220),
-              height: Math.max(height, 140),
-            };
-          },
           aspectRatio: 16 / 9,
         };
 
@@ -291,8 +263,8 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
             () => {} // Frame with no barcode
           );
         } catch (firstStartErr) {
-          console.warn("Primary camera start failed, trying generic fallback:", firstStartErr);
-          // Fallback to user facing mode or basic camera
+          console.warn("Primary camera start failed, trying user-facing webcam fallback:", firstStartErr);
+          // Fallback to user-facing mode or default webcam
           await scanner.start(
             { facingMode: "user" },
             scanConfig,
@@ -302,6 +274,21 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
         }
 
         setIsScanning(true);
+
+        // Enumerate devices in background without disrupting active video stream
+        try {
+          if (navigator.mediaDevices?.enumerateDevices) {
+            const allDevs = await navigator.mediaDevices.enumerateDevices();
+            const videoDevs = allDevs
+              .filter((d) => d.kind === "videoinput")
+              .map((d, idx) => ({ id: d.deviceId, label: d.label || `Camera ${idx + 1}` }));
+            if (videoDevs.length > 0) {
+              setAvailableCameras(videoDevs);
+            }
+          }
+        } catch {
+          // Ignore enumeration failure
+        }
       } catch (err: unknown) {
         console.error("Camera activation error:", err);
         const rawMsg = err instanceof Error ? err.message : String(err);
