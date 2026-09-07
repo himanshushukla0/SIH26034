@@ -21,6 +21,12 @@ from pathlib import Path
 from typing import Any, Optional
 
 from backend.config import settings
+from backend.rule_table import (
+    LADDER_36_1,
+    LADDER_36_2,
+    LADDER_29,
+    RULE_TABLE_VERIFIED_AGAINST,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -515,22 +521,31 @@ class ReportGenerator:
     </table>
 
     <div class="penalty-box">
-        <h4>STATUTORY PENALTY & LEGAL LIABILITY ADVISORY UNDER THE LEGAL METROLOGY ACT, 2009 (ACT NO. 1 OF 2010)</h4>
+        <h4>STATUTORY PENALTY & LEGAL LIABILITY ADVISORY UNDER THE LEGAL METROLOGY ACT, 2009 (AS AMENDED BY JAN VISHWAS ACT, 2026)</h4>
         <div style="font-size: 11.5px; color: #881337; line-height: 1.6;">
             <p style="margin: 0 0 6px 0;">
-                • <strong>Section 36(1) — Penalty for Non-Standard Packages:</strong> Whoever manufactures, packs, imports, sells, distributes, delivers, offers, exposes or possesses for sale any pre-packaged commodity which does not conform to the declarations on the package as provided in this Act shall be punished with fine up to <strong>₹25,000</strong> for the first offence, up to <strong>₹50,000</strong> for the second offence, and from <strong>₹50,000 up to ₹1,00,000</strong> or with <strong>imprisonment for a term which may extend to one year, or both</strong> for subsequent offences.
+                • <strong>Section 36(1) — Penalty for Non-Standard Packages:</strong> Whoever manufactures, packs, imports, sells, distributes, delivers, offers, exposes or possesses for sale any pre-packaged commodity which does not conform to declarations on the package as provided under Section 18 / Rule 6 is subject to statutory enforcement under Jan Vishwas 2026:
+                <strong>First contravention:</strong> {LADDER_36_1.first.describe()};
+                <strong>Second contravention:</strong> {LADDER_36_1.second.describe()};
+                <strong>Subsequent contraventions:</strong> {LADDER_36_1.subsequent.describe()}.
             </p>
             <p style="margin: 0 0 6px 0;">
-                • <strong>Section 29 — Penalty for Quoting Non-Standard Units:</strong> Under Section 11(1)(d), quoting or indicating net quantity in non-standard units (such as 'gms', 'gm', 'ltr', 'kilos') is strictly prohibited and punishable under Section 29 with fine up to <strong>₹10,000</strong>, and for subsequent offences with imprisonment up to <strong>one year, or with fine, or both</strong>.
+                • <strong>Section 29 — Penalty for Quoting Non-Standard Units:</strong> Quoting or indicating net quantity in non-standard units (such as 'gms', 'gm', 'ltr', 'kilos') is strictly prohibited under Section 11(1)(d):
+                <strong>First contravention:</strong> {LADDER_29.first.describe()};
+                <strong>Second contravention:</strong> {LADDER_29.second.describe()};
+                <strong>Subsequent contraventions:</strong> {LADDER_29.subsequent.describe()}.
             </p>
             <p style="margin: 0 0 6px 0;">
-                • <strong>Section 36(2) — Penalty for Error in Net Quantity:</strong> Manufacturing or packing commodities with error in net quantity beyond maximum permissible error is punishable with fine not less than <strong>₹10,000 up to ₹50,000</strong>, and for subsequent offences with fine up to <strong>₹1,00,000 or imprisonment up to one year, or both</strong>.
+                • <strong>Section 36(2) — Penalty for Error in Net Quantity (Shortfall):</strong> Manufacturing or packing commodities with shortfall in net quantity beyond maximum permissible error under the First Schedule remains a criminal offence:
+                <strong>First offence:</strong> {LADDER_36_2.first.describe()};
+                <strong>Second offence:</strong> {LADDER_36_2.second.describe()};
+                <strong>Subsequent offences:</strong> {LADDER_36_2.subsequent.describe()}.
             </p>
             <p style="margin: 0 0 6px 0;">
                 • <strong>Section 49 — Corporate Officer Liability & Publication of Conviction:</strong> Where an offence under this Act has been committed by a company, the Director or person nominated under Section 49(2) and the company itself are deemed guilty. Under Section 49(5), the Court is empowered to order the publication of the convicted company's name, place of business, and nature of contravention in leading newspapers at the company's expense.
             </p>
             <p style="margin: 0;">
-                • <strong>Section 15 — Statutory Search & Seizure Powers:</strong> Authorized Legal Metrology Officers are legally empowered to enter premises, search, and seize non-conforming pre-packaged goods and records relating to trade and commerce.
+                • <strong>Section 15 — Statutory Search, Seizure & Improvement Notice Powers:</strong> Authorized Legal Metrology Officers are legally empowered to enter premises, search, seize non-conforming pre-packaged goods, and issue Improvement Notices under Section 15(6) specifying mandatory measures to secure compliance within 30 days.
             </p>
         </div>
     </div>

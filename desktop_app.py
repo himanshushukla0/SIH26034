@@ -15,6 +15,20 @@ import time
 import json
 import datetime
 import urllib.request
+from rule_table import (
+    rule,
+    consequence_for,
+    notice_kind_for,
+    IMPROVEMENT_NOTICE,
+    LADDER_36_1,
+    BY_ID,
+)
+
+def find_rule_for_clause(clause_str):
+    for r in BY_ID.values():
+        if r.citation.startswith(clause_str) or clause_str in r.citation:
+            return r
+    return rule("MANUFACTURER")
 
 # --- Reference Test Dataset for Field Demonstrations ---
 DEMO_PRODUCTS = [
@@ -26,28 +40,30 @@ DEMO_PRODUCTS = [
         "fssai": "10012011000168",
         "status": "COMPLIANT",
         "checks": [
-            ("Rule 6(1)(a)", "Name & Complete Address of Manufacturer", "Tata Consumer Products Ltd., Kolkata - 700001", "PASS"),
-            ("Rule 6(1)(e)", "MRP & Unit Sale Price (USP)", "₹320.00 (₹0.64 / g)", "PASS"),
-            ("Rule 6(1)(h)", "Net Quantity & Standard Measurement Unit", "500 g", "PASS"),
-            ("Rule 6(1)(d)", "Month & Year of Manufacture / Expiry", "08/2026", "PASS"),
-            ("Rule 6(1)(n)", "Country of Origin Declaration", "India", "PASS"),
-            ("Rule 6(1)(f)", "Consumer Care Helpline & Email", "1800-345-1720 / care@tataconsumer.com", "PASS")
+            (rule("MANUFACTURER").citation.split(",")[0], rule("MANUFACTURER").subject, "Tata Consumer Products Ltd., Kolkata - 700001", "PASS"),
+            (rule("MRP").citation.split(",")[0], rule("MRP").subject, "₹320.00", "PASS"),
+            (rule("UNIT_SALE_PRICE").citation.split(",")[0], rule("UNIT_SALE_PRICE").subject, "₹0.64 / g", "PASS"),
+            (rule("NET_QUANTITY").citation.split(",")[0], rule("NET_QUANTITY").subject, "500 g", "PASS"),
+            (rule("DATE_OF_MANUFACTURE").citation.split(",")[0], rule("DATE_OF_MANUFACTURE").subject, "08/2026", "PASS"),
+            (rule("COUNTRY_OF_ORIGIN").citation.split(",")[0], rule("COUNTRY_OF_ORIGIN").subject, "India", "PASS"),
+            (rule("CONSUMER_CARE").citation.split(",")[0], rule("CONSUMER_CARE").subject, "1800-345-1720 / care@tataconsumer.com", "PASS")
         ]
     },
     {
         "name": "Royal Shahi Garam Masala Pouch",
         "barcode": "8909999999999",
         "category": "Spices & Condiments",
-        "manufacturer": "Local Spice Mills (Missing Pin Code)",
+        "manufacturer": "Local Spice Mills (Missing PIN Code)",
         "fssai": "00000000000000",
         "status": "NON_COMPLIANT",
         "checks": [
-            ("Rule 6(1)(a)", "Name & Complete Address of Manufacturer", "Incomplete Address (No Pin Code)", "FAIL"),
-            ("Rule 6(1)(e)", "MRP & Unit Sale Price (USP)", "₹85.00 (No USP Declared)", "FAIL"),
-            ("Rule 6(1)(h)", "Net Quantity & Standard Measurement Unit", "100 g", "PASS"),
-            ("Rule 6(1)(d)", "Month & Year of Manufacture / Expiry", "Missing on Front Display", "FAIL"),
-            ("Rule 6(1)(n)", "Country of Origin Declaration", "India", "PASS"),
-            ("Rule 6(1)(f)", "Consumer Care Helpline & Email", "Missing Email Address", "FAIL")
+            (rule("MANUFACTURER").citation.split(",")[0], rule("MANUFACTURER").subject, "Incomplete Address (No PIN Code)", "FAIL"),
+            (rule("MRP").citation.split(",")[0], rule("MRP").subject, "₹85.00", "PASS"),
+            (rule("UNIT_SALE_PRICE").citation.split(",")[0], rule("UNIT_SALE_PRICE").subject, "Missing on PDP", "FAIL"),
+            (rule("NET_QUANTITY").citation.split(",")[0], rule("NET_QUANTITY").subject, "100 g", "PASS"),
+            (rule("DATE_OF_MANUFACTURE").citation.split(",")[0], rule("DATE_OF_MANUFACTURE").subject, "Missing on Front Display", "FAIL"),
+            (rule("COUNTRY_OF_ORIGIN").citation.split(",")[0], rule("COUNTRY_OF_ORIGIN").subject, "India", "PASS"),
+            (rule("CONSUMER_CARE").citation.split(",")[0], rule("CONSUMER_CARE").subject, "Missing Email Address", "FAIL")
         ]
     },
     {
@@ -58,12 +74,13 @@ DEMO_PRODUCTS = [
         "fssai": "10014022002341",
         "status": "NON_COMPLIANT",
         "checks": [
-            ("Rule 6(1)(a)", "Indian Importer Name & Full Address", "Missing on Principal Display Panel", "FAIL"),
-            ("Rule 6(1)(e)", "MRP & Unit Sale Price in Indian INR", "$4.50 (Dual Pricing / No INR MRP)", "FAIL"),
-            ("Rule 6(1)(h)", "Net Quantity & Standard Measurement Unit", "250 g", "PASS"),
-            ("Rule 6(1)(d)", "Date of Import & Best Before Date", "11/2026", "PASS"),
-            ("Rule 6(1)(n)", "Country of Origin Declaration", "Switzerland", "PASS"),
-            ("Rule 6(1)(f)", "Consumer Care Redressal Details", "Valid Indian Contact Details", "PASS")
+            (rule("MANUFACTURER").citation.split(",")[0], "Indian Importer Name & Full Address", "Missing on Principal Display Panel", "FAIL"),
+            (rule("MRP").citation.split(",")[0], "MRP & Unit Sale Price in Indian INR", "$4.50 (Dual Pricing / No INR MRP)", "FAIL"),
+            (rule("UNIT_SALE_PRICE").citation.split(",")[0], rule("UNIT_SALE_PRICE").subject, "Missing", "FAIL"),
+            (rule("NET_QUANTITY").citation.split(",")[0], rule("NET_QUANTITY").subject, "250 g", "PASS"),
+            (rule("DATE_OF_MANUFACTURE").citation.split(",")[0], "Date of Import & Best Before Date", "11/2026", "PASS"),
+            (rule("COUNTRY_OF_ORIGIN").citation.split(",")[0], rule("COUNTRY_OF_ORIGIN").subject, "Switzerland", "PASS"),
+            (rule("CONSUMER_CARE").citation.split(",")[0], rule("CONSUMER_CARE").subject, "Valid Indian Contact Details", "PASS")
         ]
     },
     {
@@ -74,12 +91,13 @@ DEMO_PRODUCTS = [
         "fssai": "10012021000071",
         "status": "COMPLIANT",
         "checks": [
-            ("Rule 6(1)(a)", "Name & Complete Address of Manufacturer", "GCMMF Ltd., Anand - 388001", "PASS"),
-            ("Rule 6(1)(e)", "MRP & Unit Sale Price (USP)", "₹650.00 (₹0.65 / ml)", "PASS"),
-            ("Rule 6(1)(h)", "Net Quantity & Standard Measurement Unit", "1000 ml", "PASS"),
-            ("Rule 6(1)(d)", "Month & Year of Manufacture / Expiry", "07/2026", "PASS"),
-            ("Rule 6(1)(n)", "Country of Origin Declaration", "India", "PASS"),
-            ("Rule 6(1)(f)", "Consumer Care Helpline & Email", "1800-258-3333 / customercare@amul.coop", "PASS")
+            (rule("MANUFACTURER").citation.split(",")[0], rule("MANUFACTURER").subject, "GCMMF Ltd., Anand - 388001", "PASS"),
+            (rule("MRP").citation.split(",")[0], rule("MRP").subject, "₹650.00", "PASS"),
+            (rule("UNIT_SALE_PRICE").citation.split(",")[0], rule("UNIT_SALE_PRICE").subject, "₹0.65 / ml", "PASS"),
+            (rule("NET_QUANTITY").citation.split(",")[0], rule("NET_QUANTITY").subject, "1000 ml", "PASS"),
+            (rule("DATE_OF_MANUFACTURE").citation.split(",")[0], rule("DATE_OF_MANUFACTURE").subject, "07/2026", "PASS"),
+            (rule("COUNTRY_OF_ORIGIN").citation.split(",")[0], rule("COUNTRY_OF_ORIGIN").subject, "India", "PASS"),
+            (rule("CONSUMER_CARE").citation.split(",")[0], rule("CONSUMER_CARE").subject, "1800-258-3333 / customercare@amul.coop", "PASS")
         ]
     }
 ]
@@ -142,12 +160,13 @@ def dynamic_audit_barcode(barcode):
     fssai_display = "100" + bc[3:14] if is_indian and len(bc) >= 14 else "10014022002341 (Importer Lic.)"
 
     checks = [
-        ("Rule 6(1)(a)", "Name & Complete Address of Manufacturer", mfr_display, "PASS"),
-        ("Rule 6(1)(e)", "MRP & Unit Sale Price (USP)", "₹199.00 (₹0.40 / g)", "PASS"),
-        ("Rule 6(1)(h)", "Net Quantity & Standard Measurement Unit", qty or "500 g", "PASS"),
-        ("Rule 6(1)(d)", "Month & Year of Manufacture / Expiry", "08/2026", "PASS"),
-        ("Rule 6(1)(n)", "Country of Origin Declaration", origin, "PASS"),
-        ("Rule 6(1)(f)", "Consumer Care Helpline & Email", "1800-11-4000 / care@consumer.gov.in", "PASS")
+        (rule("MANUFACTURER").citation.split(",")[0], rule("MANUFACTURER").subject, mfr_display, "PASS"),
+        (rule("MRP").citation.split(",")[0], rule("MRP").subject, "₹199.00", "PASS"),
+        (rule("UNIT_SALE_PRICE").citation.split(",")[0], rule("UNIT_SALE_PRICE").subject, "₹0.40 / g", "PASS"),
+        (rule("NET_QUANTITY").citation.split(",")[0], rule("NET_QUANTITY").subject, qty or "500 g", "PASS"),
+        (rule("DATE_OF_MANUFACTURE").citation.split(",")[0], rule("DATE_OF_MANUFACTURE").subject, "08/2026", "PASS"),
+        (rule("COUNTRY_OF_ORIGIN").citation.split(",")[0], rule("COUNTRY_OF_ORIGIN").subject, origin, "PASS"),
+        (rule("CONSUMER_CARE").citation.split(",")[0], rule("CONSUMER_CARE").subject, "1800-11-4000 / care@consumer.gov.in", "PASS")
     ]
 
     return {
@@ -439,15 +458,60 @@ class LmpcDesktopApp:
         viol_frame = ttk.Frame(act_frame)
         viol_frame.pack(side=tk.LEFT)
         ttk.Label(viol_frame, text="Simulate Violation:", font=("Segoe UI", 8, "bold"), foreground="#64748b").pack(side=tk.LEFT, padx=(0, 4))
-        ttk.Button(viol_frame, text="Flag Missing USP", command=lambda: toggle_violation("Rule 6(1)(e)")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(viol_frame, text="Flag Missing Expiry", command=lambda: toggle_violation("Rule 6(1)(d)")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(viol_frame, text="Flag Missing USP", command=lambda: toggle_violation(rule("UNIT_SALE_PRICE").citation.split(",")[0])).pack(side=tk.LEFT, padx=2)
+        ttk.Button(viol_frame, text="Flag Missing Expiry", command=lambda: toggle_violation(rule("DATE_OF_MANUFACTURE").citation.split(",")[0])).pack(side=tk.LEFT, padx=2)
 
         def issue_notice():
             if not hasattr(self, 'current_inspected_item') or not self.current_inspected_item:
                 return
             item = self.current_inspected_item
-            notice_text = f"""
+            failing_checks = [c for c in item['checks'] if c[3] == 'FAIL']
+            rule_ids = [find_rule_for_clause(c[0]).id for c in failing_checks]
+            n_kind = notice_kind_for(rule_ids, 1)
+
+            if n_kind == IMPROVEMENT_NOTICE:
+                notice_text = f"""================================================================================
+           GOVERNMENT OF INDIA • DEPARTMENT OF CONSUMER AFFAIRS
+           STATUTORY IMPROVEMENT NOTICE UNDER SECTION 15(6)
+       (LEGAL METROLOGY ACT, 2009 AS AMENDED BY JAN VISHWAS ACT, 2026)
 ================================================================================
+Notice Reference: LMPC/HQ/2026/{int(time.time()) % 100000}
+Date: {datetime.datetime.now().strftime('%d-%B-%Y')}
+
+To,
+M/s {item['manufacturer']}
+
+SUBJECT: IMPROVEMENT NOTICE UNDER SECTION 15(6) FOR CONTRAVENTION OF SECTION 18(1)
+         READ WITH RULE 6 OF THE LEGAL METROLOGY (PACKAGED COMMODITIES) RULES, 2011.
+
+WHEREAS, an official inspection was executed on commodity: '{item['name']}';
+Barcode / GTIN: {item['barcode']}
+
+AND WHEREAS, the following statutory contraventions have been verified on the label:
+
+"""
+                for c, d, v, s in failing_checks:
+                    r_obj = find_rule_for_clause(c)
+                    notice_text += f"  • {c}: {d} — Detected: '{v}'\n"
+                    notice_text += f"    Specified Remedial Measure (s.15(6)): {r_obj.remedy}\n\n"
+
+                notice_text += f"""NOW, THEREFORE, pursuant to Section 15(6) of the Legal Metrology Act, 2009 (as amended
+by the Jan Vishwas (Amendment of Provisions) Act, 2026, in force 01-05-2026), you are hereby
+served with this IMPROVEMENT NOTICE to rectify the aforesaid contraventions and take the
+specified measures to secure compliance within 30 DAYS of receipt of this notice.
+
+STATUTORY REGIME (JAN VISHWAS AMENDMENT ACT, 2026):
+  • First contravention: {LADDER_36_1.first.describe()}
+  • Failure to comply with this notice within 30 days shall render you liable to civil
+    penalty proceedings under Section 36(1) ({LADDER_36_1.second.describe()}).
+
+Issued by Order:
+Inspector of Legal Metrology, Enforcement Cell, New Delhi.
+================================================================================
+"""
+                window_title = "Statutory Improvement Notice Form (Section 15(6))"
+            else:
+                notice_text = f"""================================================================================
            GOVERNMENT OF INDIA • DEPARTMENT OF CONSUMER AFFAIRS
            STATUTORY SHOW CAUSE NOTICE UNDER SECTION 36 / 49
 ================================================================================
@@ -466,22 +530,23 @@ Barcode / GTIN: {item['barcode']}
 AND WHEREAS, the following statutory contraventions have been verified on the label:
 
 """
-            for c, d, v, s in item['checks']:
-                if s == 'FAIL':
+                for c, d, v, s in failing_checks:
                     notice_text += f"  • {c}: {d} — Detected: '{v}'\n"
 
-            notice_text += f"""
-NOW, THEREFORE, take notice that you are hereby called upon to show cause within 15 DAYS
-of receipt of this notice as to why penal proceedings under Section 36 of the Legal
-Metrology Act, 2009 should not be instituted against you before the Competent Magistrate.
+                notice_text += f"""NOW, THEREFORE, take notice that you are hereby called upon to show cause within 15 DAYS
+of receipt of this notice as to why penal proceedings under Section 36 / Section 49 of the
+Legal Metrology Act, 2009 should not be instituted against you before the Competent Adjudicating
+Authority / Magistrate.
 
 Issued by Order:
 Inspector of Legal Metrology, Enforcement Cell, New Delhi.
 ================================================================================
 """
+                window_title = "Statutory Show Cause Notice Form"
+
             top = tk.Toplevel(self.root)
-            top.title("Statutory Show Cause Notice Form")
-            top.geometry("680x520")
+            top.title(window_title)
+            top.geometry("700x540")
 
             txt = tk.Text(top, wrap=tk.WORD, font=("Consolas", 10), padx=10, pady=10)
             txt.insert(tk.END, notice_text)
@@ -500,7 +565,7 @@ Inspector of Legal Metrology, Enforcement Cell, New Delhi.
             ttk.Button(btn_frame, text="Save / Export Notice as TXT", command=save_notice).pack(side=tk.RIGHT, padx=5)
             ttk.Button(btn_frame, text="Close", command=top.destroy).pack(side=tk.RIGHT)
 
-        btn_notice = ttk.Button(act_frame, text="📄 Issue Notice u/s 36", command=issue_notice, style="Danger.TButton")
+        btn_notice = ttk.Button(act_frame, text="📄 Issue Statutory Notice", command=issue_notice, style="Danger.TButton")
         btn_notice.pack(side=tk.RIGHT)
 
         execute_audit()
@@ -667,11 +732,11 @@ Statutory Clearance: Verified for sale under Food Safety & Standards Act, 2006.
         tree.column("status", width=100, anchor="center")
 
         sample_cases = [
-            ("LMPC-8841", "Shahi Garam Masala", "Local Spice Mills", "Rule 6(1)(e) - No USP", "₹ 25,000 Fine", "Notice Issued"),
-            ("LMPC-8840", "Swiss Choco Wafers", "Swiss Confections AG", "Rule 6(1)(a) - Importer", "Seizure Order", "Under Review"),
+            ("LMPC-8841", "Shahi Garam Masala", "Local Spice Mills", f"{rule('UNIT_SALE_PRICE').citation.split(',')[0]} - No USP", "Section 15(6) Notice", "Improvement Notice"),
+            ("LMPC-8840", "Swiss Choco Wafers", "Swiss Confections AG", f"{rule('MANUFACTURER').citation.split(',')[0]} - Importer", "Seizure Order", "Under Review"),
             ("LMPC-8839", "Tata Tea Gold 500g", "Tata Consumer Ltd.", "None (All Passed)", "Cleared", "Compliant"),
             ("LMPC-8838", "Amul Pure Ghee 1L", "GCMMF Ltd.", "None (All Passed)", "Cleared", "Compliant"),
-            ("LMPC-8837", "Gold Almonds 200g", "DryFruit Traders", "Rule 6(1)(d) - Missing Expiry", "₹ 15,000 Fine", "Compounded")
+            ("LMPC-8837", "Gold Almonds 200g", "DryFruit Traders", f"{rule('BEST_BEFORE').citation.split(',')[0]} - Missing Expiry", "Section 15(6) Notice", "Improvement Notice")
         ]
 
         for c in sample_cases:

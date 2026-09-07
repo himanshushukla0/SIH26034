@@ -12,6 +12,13 @@ import sys
 import time
 import json
 import datetime
+from rule_table import (
+    rule,
+    consequence_for,
+    notice_kind_for,
+    IMPROVEMENT_NOTICE,
+    BY_ID,
+)
 
 # Enable UTF-8 and ANSI colors in Windows PowerShell
 if hasattr(sys.stdout, 'reconfigure'):
@@ -79,16 +86,57 @@ def print_statutory_table(commodity_name, barcode, fssai, checks, overall_status
         print(f"     {DIM}No violation observed. Commodity authorized for retail trade.{RESET}")
     else:
         print(f"\n{RED}{BOLD} [✗] STATUTORY STATUS: NON-COMPLIANCE DETECTED — CONTRAVENTION OF SECTION 18 & RULE 6{RESET}")
-        print(f"     {BOLD}{RED}Actionable under Section 36 of the Legal Metrology Act, 2009 (Penalty up to ₹25,000 / Notice){RESET}")
+        print(f"     {BOLD}{RED}Actionable under Section 36 of the Legal Metrology Act, 2009 (Section 15(6) Improvement Notice / Civil Penalty){RESET}")
 
-def generate_statutory_notice(commodity_name, manufacturer, violations):
+def generate_statutory_notice(commodity_name, manufacturer, violations, offence_number=1):
     notice_id = f"LMPC/HQ/2026/{int(time.time()) % 100000}"
     dt = datetime.datetime.now().strftime("%d-%B-%Y")
     
-    print(f"\n{BOLD}{SAFFRON}╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗{RESET}")
-    print(f"{BOLD}{SAFFRON}║                     FORM OF STATUTORY SHOW CAUSE NOTICE UNDER SECTION 36 / 49                     ║{RESET}")
-    print(f"{BOLD}{SAFFRON}╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝{RESET}")
-    print(f"""
+    rule_ids = [v.get("rule_id", "MANUFACTURER") for v in violations]
+    n_kind = notice_kind_for(rule_ids, offence_number)
+    
+    if n_kind == IMPROVEMENT_NOTICE:
+        print(f"\n{BOLD}{SAFFRON}╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗{RESET}")
+        print(f"{BOLD}{SAFFRON}║                STATUTORY IMPROVEMENT NOTICE UNDER SECTION 15(6) (JAN VISHWAS ACT, 2026)                ║{RESET}")
+        print(f"{BOLD}{SAFFRON}╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝{RESET}")
+        print(f"""
+{BOLD}OFFICE OF THE CONTROLLER OF LEGAL METROLOGY{RESET}
+DEPARTMENT OF CONSUMER AFFAIRS, GOVERNMENT OF INDIA
+Notice Reference No: {BOLD}{notice_id}{RESET}                                           Date: {dt}
+
+To,
+M/s {manufacturer or 'Responsible Manufacturer / Packer / Importer'}
+
+{BOLD}SUBJECT: IMPROVEMENT NOTICE UNDER SECTION 15(6) FOR CONTRAVENTION OF SECTION 18(1)
+         READ WITH RULE 6 OF THE LEGAL METROLOGY (PACKAGED COMMODITIES) RULES, 2011.{RESET}
+
+WHEREAS, an official inspection was executed on commodity: {BOLD}{commodity_name}{RESET};
+AND WHEREAS, the following statutory contraventions have been verified on the Principal Display Panel:
+""")
+        for i, v in enumerate(violations, 1):
+            rid = v.get("rule_id")
+            remedy_text = rule(rid).remedy if rid in BY_ID else "Rectify the defect on the principal display panel."
+            print(f"  {RED}{BOLD}[{i}] Contravention of {v['clause']}:{RESET} {v['label']} — Detected: '{v['val']}'")
+            print(f"      {CYAN}Specified Remedial Measure (s.15(6)):{RESET} {remedy_text}")
+        
+        print(f"""
+NOW, THEREFORE, pursuant to Section 15(6) of the Legal Metrology Act, 2009 (as amended by the Jan Vishwas
+(Amendment of Provisions) Act, 2026), you are hereby served with this {BOLD}IMPROVEMENT NOTICE{RESET} to rectify the
+aforesaid contraventions and take the specified measures within {BOLD}30 DAYS{RESET} of receipt of this notice.
+
+{BOLD}STATUTORY REGIME (JAN VISHWAS ACT, 2026):{RESET}
+  • First contravention: {LADDER_36_1.first.describe()}
+  • Failure to comply with this notice within 30 days shall render you liable to civil penalty proceedings
+    under Section 36(1) ({LADDER_36_1.second.describe()}).
+
+Issued under the Seal and Authority of the Legal Metrology Enforcement Cell.
+{DIM}Inspector of Legal Metrology, Enforcement Cell, New Delhi.{RESET}
+""")
+    else:
+        print(f"\n{BOLD}{SAFFRON}╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗{RESET}")
+        print(f"{BOLD}{SAFFRON}║                     FORM OF STATUTORY SHOW CAUSE NOTICE UNDER SECTION 36 / 49                     ║{RESET}")
+        print(f"{BOLD}{SAFFRON}╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝{RESET}")
+        print(f"""
 {BOLD}OFFICE OF THE CONTROLLER OF LEGAL METROLOGY{RESET}
 DEPARTMENT OF CONSUMER AFFAIRS, GOVERNMENT OF INDIA
 Notice Reference No: {BOLD}{notice_id}{RESET}                                           Date: {dt}
@@ -102,19 +150,19 @@ M/s {manufacturer or 'Responsible Manufacturer / Packer / Importer'}
 WHEREAS, an official inspection was executed on commodity: {BOLD}{commodity_name}{RESET};
 AND WHEREAS, the following statutory contraventions have been verified on the Principal Display Panel:
 """)
-    for i, v in enumerate(violations, 1):
-        print(f"  {RED}{BOLD}[{i}] Contravention of {v['clause']}:{RESET} {v['label']} — Detected: '{v['val']}'")
-    
-    print(f"""
+        for i, v in enumerate(violations, 1):
+            print(f"  {RED}{BOLD}[{i}] Contravention of {v['clause']}:{RESET} {v['label']} — Detected: '{v['val']}'")
+        
+        print(f"""
 NOW, THEREFORE, take notice that you are hereby called upon to show cause within {BOLD}15 DAYS{RESET} of receipt of 
 this notice as to why penal proceedings under {BOLD}Section 36 / Section 49{RESET} of the Legal Metrology Act, 2009 
-should not be instituted against you before the Competent Judicial Magistrate.
+should not be instituted against you before the Competent Adjudicating Authority / Magistrate.
 
 Issued under the Seal and Authority of the Legal Metrology Enforcement Cell.
 {DIM}Inspector of Legal Metrology, Enforcement Cell, New Delhi.{RESET}
 """)
 
-# Reference Dataset
+# Reference Dataset — All citations and subjects derived from rule_table
 DEMO_ITEMS = {
     "1": {
         "name": "Tata Tea Gold (500g Pack)",
@@ -122,12 +170,13 @@ DEMO_ITEMS = {
         "fssai": "10012011000168 (Valid 14-Digit Lic.)",
         "status": "COMPLIANT",
         "checks": [
-            {"clause": "Rule 6(1)(a)", "label": "Name & Address of Manufacturer", "val": "Tata Consumer Prod.", "status": "PASS"},
-            {"clause": "Rule 6(1)(e)", "label": "MRP & Unit Sale Price (USP)", "val": "₹320.00 (₹0.64/g)", "status": "PASS"},
-            {"clause": "Rule 6(1)(h)", "label": "Net Quantity & Standard Units", "val": "500 g", "status": "PASS"},
-            {"clause": "Rule 6(1)(d)", "label": "Month & Year of Manufacture", "val": "08/2026", "status": "PASS"},
-            {"clause": "Rule 6(1)(n)", "label": "Country of Origin", "val": "India", "status": "PASS"},
-            {"clause": "Rule 6(1)(f)", "label": "Consumer Care Helpline & Email", "val": "1800-345-1720", "status": "PASS"},
+            {"rule_id": "MANUFACTURER", "clause": rule("MANUFACTURER").citation.split(",")[0], "label": rule("MANUFACTURER").subject, "val": "Tata Consumer Prod.", "status": "PASS"},
+            {"rule_id": "MRP", "clause": rule("MRP").citation.split(",")[0], "label": rule("MRP").subject, "val": "₹320.00", "status": "PASS"},
+            {"rule_id": "UNIT_SALE_PRICE", "clause": rule("UNIT_SALE_PRICE").citation.split(",")[0], "label": rule("UNIT_SALE_PRICE").subject, "val": "₹0.64 / g", "status": "PASS"},
+            {"rule_id": "NET_QUANTITY", "clause": rule("NET_QUANTITY").citation.split(",")[0], "label": rule("NET_QUANTITY").subject, "val": "500 g", "status": "PASS"},
+            {"rule_id": "DATE_OF_MANUFACTURE", "clause": rule("DATE_OF_MANUFACTURE").citation.split(",")[0], "label": rule("DATE_OF_MANUFACTURE").subject, "val": "08/2026", "status": "PASS"},
+            {"rule_id": "COUNTRY_OF_ORIGIN", "clause": rule("COUNTRY_OF_ORIGIN").citation.split(",")[0], "label": rule("COUNTRY_OF_ORIGIN").subject, "val": "India", "status": "PASS"},
+            {"rule_id": "CONSUMER_CARE", "clause": rule("CONSUMER_CARE").citation.split(",")[0], "label": rule("CONSUMER_CARE").subject, "val": "1800-345-1720 / care@tataconsumer.com", "status": "PASS"},
         ]
     },
     "2": {
@@ -136,12 +185,13 @@ DEMO_ITEMS = {
         "fssai": "00000000000000 (Invalid State Code)",
         "status": "NON_COMPLIANT",
         "checks": [
-            {"clause": "Rule 6(1)(a)", "label": "Name & Address of Manufacturer", "val": "Missing Full Pin", "status": "FAIL"},
-            {"clause": "Rule 6(1)(e)", "label": "MRP & Unit Sale Price (USP)", "val": "₹85.00 (No USP)", "status": "FAIL"},
-            {"clause": "Rule 6(1)(h)", "label": "Net Quantity & Standard Units", "val": "100 g", "status": "PASS"},
-            {"clause": "Rule 6(1)(d)", "label": "Month & Year of Manufacture", "val": "Missing on PDP", "status": "FAIL"},
-            {"clause": "Rule 6(1)(n)", "label": "Country of Origin", "val": "India", "status": "PASS"},
-            {"clause": "Rule 6(1)(f)", "label": "Consumer Care Helpline & Email", "val": "Missing Email", "status": "FAIL"},
+            {"rule_id": "MANUFACTURER", "clause": rule("MANUFACTURER").citation.split(",")[0], "label": rule("MANUFACTURER").subject, "val": "Missing Full PIN Code", "status": "FAIL"},
+            {"rule_id": "MRP", "clause": rule("MRP").citation.split(",")[0], "label": rule("MRP").subject, "val": "₹85.00", "status": "PASS"},
+            {"rule_id": "UNIT_SALE_PRICE", "clause": rule("UNIT_SALE_PRICE").citation.split(",")[0], "label": rule("UNIT_SALE_PRICE").subject, "val": "Missing on PDP", "status": "FAIL"},
+            {"rule_id": "NET_QUANTITY", "clause": rule("NET_QUANTITY").citation.split(",")[0], "label": rule("NET_QUANTITY").subject, "val": "100 g", "status": "PASS"},
+            {"rule_id": "DATE_OF_MANUFACTURE", "clause": rule("DATE_OF_MANUFACTURE").citation.split(",")[0], "label": rule("DATE_OF_MANUFACTURE").subject, "val": "Missing on PDP", "status": "FAIL"},
+            {"rule_id": "COUNTRY_OF_ORIGIN", "clause": rule("COUNTRY_OF_ORIGIN").citation.split(",")[0], "label": rule("COUNTRY_OF_ORIGIN").subject, "val": "India", "status": "PASS"},
+            {"rule_id": "CONSUMER_CARE", "clause": rule("CONSUMER_CARE").citation.split(",")[0], "label": rule("CONSUMER_CARE").subject, "val": "Missing Email Address", "status": "FAIL"},
         ]
     },
     "3": {
@@ -150,12 +200,13 @@ DEMO_ITEMS = {
         "fssai": "10014022002341 (Valid Importer Lic.)",
         "status": "NON_COMPLIANT",
         "checks": [
-            {"clause": "Rule 6(1)(a)", "label": "Indian Importer Name & Full Address", "val": "Not on Front Panel", "status": "FAIL"},
-            {"clause": "Rule 6(1)(e)", "label": "MRP & Unit Sale Price in Indian INR", "val": "$4.50 (Dual Price)", "status": "FAIL"},
-            {"clause": "Rule 6(1)(h)", "label": "Net Quantity & Standard Units", "val": "250 g", "status": "PASS"},
-            {"clause": "Rule 6(1)(d)", "label": "Date of Import & Best Before", "val": "11/2026", "status": "PASS"},
-            {"clause": "Rule 6(1)(n)", "label": "Country of Origin Declaration", "val": "Switzerland", "status": "PASS"},
-            {"clause": "Rule 6(1)(f)", "label": "Consumer Care Redressal Info", "val": "Valid Phone", "status": "PASS"},
+            {"rule_id": "MANUFACTURER", "clause": rule("MANUFACTURER").citation.split(",")[0], "label": "Indian Importer Name & Full Address", "val": "Not on Front Panel", "status": "FAIL"},
+            {"rule_id": "MRP", "clause": rule("MRP").citation.split(",")[0], "label": "MRP & Unit Sale Price in Indian INR", "val": "$4.50 (Dual Price / No INR MRP)", "status": "FAIL"},
+            {"rule_id": "UNIT_SALE_PRICE", "clause": rule("UNIT_SALE_PRICE").citation.split(",")[0], "label": rule("UNIT_SALE_PRICE").subject, "val": "Missing", "status": "FAIL"},
+            {"rule_id": "NET_QUANTITY", "clause": rule("NET_QUANTITY").citation.split(",")[0], "label": rule("NET_QUANTITY").subject, "val": "250 g", "status": "PASS"},
+            {"rule_id": "DATE_OF_MANUFACTURE", "clause": rule("DATE_OF_MANUFACTURE").citation.split(",")[0], "label": "Date of Import & Best Before", "val": "11/2026", "status": "PASS"},
+            {"rule_id": "COUNTRY_OF_ORIGIN", "clause": rule("COUNTRY_OF_ORIGIN").citation.split(",")[0], "label": rule("COUNTRY_OF_ORIGIN").subject, "val": "Switzerland", "status": "PASS"},
+            {"rule_id": "CONSUMER_CARE", "clause": rule("CONSUMER_CARE").citation.split(",")[0], "label": rule("CONSUMER_CARE").subject, "val": "Valid Phone / Email", "status": "PASS"},
         ]
     }
 }
@@ -269,9 +320,9 @@ def main():
             print(f"  • Estimated Compounding Fines:    {BOLD}{CYAN}₹ 34,20,000{RESET}\n")
             
             print(f"{BOLD}Top 3 Most Violated Rule 6 Clauses this Month:{RESET}")
-            print(f"  1. {RED}Rule 6(1)(e){RESET} — Missing or Incorrect Unit Sale Price (USP) (42% of violations)")
-            print(f"  2. {RED}Rule 6(1)(d){RESET} — Obscured or Missing Expiry / Best Before on Front Panel (31%)")
-            print(f"  3. {RED}Rule 6(1)(a){RESET} — Incomplete Manufacturer Address or Missing Pin Code (18%)")
+            print(f"  1. {RED}{rule('UNIT_SALE_PRICE').citation.split(',')[0]}{RESET} — Missing or Incorrect Unit Sale Price (USP) (42% of violations)")
+            print(f"  2. {RED}{rule('BEST_BEFORE').citation.split(',')[0]}{RESET} — Obscured or Missing Expiry / Best Before on Front Panel (31%)")
+            print(f"  3. {RED}{rule('MANUFACTURER').citation.split(',')[0]}{RESET} — Incomplete Manufacturer Address or Missing PIN Code (18%)")
             input(f"\n{DIM}Press Enter to return to menu...{RESET}")
 
 if __name__ == "__main__":

@@ -61,7 +61,7 @@ class TestReportGenerator(unittest.TestCase):
             rule_reference="Rule 6(1)(f)",
             act_section="Section 18(1)",
             punishment_section="Section 36(1)",
-            statutory_penalty="Fine up to Rs 25,000",
+            statutory_penalty="Improvement notice under Section 15(6)",
             field_name="mrp",
             severity="critical",
             description="MRP omitted from PDP",

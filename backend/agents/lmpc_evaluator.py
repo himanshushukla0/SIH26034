@@ -33,22 +33,38 @@ MINISTRY_AUTHORITY = (
     "(Department of Consumer Affairs), Government of India"
 )
 
-# Standard statutory penalty clauses under the Act
+from backend.rule_table import (
+    rule,
+    consequence_for,
+    max_permissible_error,
+    IMPROVEMENT_NOTICE,
+    CIVIL_PENALTY,
+    CRIMINAL_FINE,
+    LADDER_36_1,
+    LADDER_36_2,
+    LADDER_29,
+)
+
+# Standard statutory penalty clauses under the Act (Incorporating Jan Vishwas Act, 2026, in force 01-05-2026)
 PENALTY_SEC_36_1 = (
-    "Punishable under Section 36(1) of Legal Metrology Act, 2009: Fine up to ₹25,000 "
-    "for first offence; up to ₹50,000 for second offence; and from ₹50,000 up to ₹1,00,000 "
-    "or imprisonment up to 1 year or both for subsequent offences."
+    f"Section 36(1), Legal Metrology Act, 2009 (Jan Vishwas 2026 regime): "
+    f"First contravention: {LADDER_36_1.first.describe()} "
+    f"Second contravention: {LADDER_36_1.second.describe()}. "
+    f"Subsequent contravention: {LADDER_36_1.subsequent.describe()}."
 )
 
 PENALTY_SEC_29 = (
-    "Punishable under Section 29 of Legal Metrology Act, 2009: Fine up to ₹10,000 for first offence; "
-    "for second or subsequent offence, with imprisonment up to 1 year, or with fine, or with both."
+    f"Section 29, Legal Metrology Act, 2009 (Jan Vishwas 2026 regime): "
+    f"First contravention: {LADDER_29.first.describe()} "
+    f"Second contravention: {LADDER_29.second.describe()}. "
+    f"Subsequent contravention: {LADDER_29.subsequent.describe()}."
 )
 
 PENALTY_SEC_36_2 = (
-    "Punishable under Section 36(2) of Legal Metrology Act, 2009: Fine not less than ₹10,000 "
-    "up to ₹50,000 for first offence; for second or subsequent offence, fine up to ₹1,00,000 "
-    "or imprisonment up to 1 year or both."
+    f"Section 36(2), Legal Metrology Act, 2009: "
+    f"First contravention: {LADDER_36_2.first.describe()}. "
+    f"Second contravention: {LADDER_36_2.second.describe()}. "
+    f"Subsequent contravention: {LADDER_36_2.subsequent.describe()}."
 )
 
 CORPORATE_LIABILITY_NOTICE = (
@@ -188,9 +204,9 @@ class LMPCEvaluator:
         else:
             declaration_status["manufacturer_name"] = {"status": "MISSING"}
             violations.append(ViolationRecord(
-                rule_reference="Rule 6(1)(a) - LM(PC) Rules, 2011",
-                act_section="Section 18(1) - Legal Metrology Act, 2009",
-                punishment_section="Section 36(1) - Legal Metrology Act, 2009",
+                rule_reference=rule("MANUFACTURER").citation,
+                act_section=rule("MANUFACTURER").obligation_section,
+                punishment_section=rule("MANUFACTURER").ladder.section,
                 statutory_penalty=PENALTY_SEC_36_1,
                 field_name="Manufacturer / Packer Name",
                 severity="critical",
@@ -213,9 +229,9 @@ class LMPCEvaluator:
         else:
             declaration_status["manufacturer_address"] = {"status": "MISSING"}
             violations.append(ViolationRecord(
-                rule_reference="Rule 6(1)(a) - LM(PC) Rules, 2011",
-                act_section="Section 18(1) - Legal Metrology Act, 2009",
-                punishment_section="Section 36(1) - Legal Metrology Act, 2009",
+                rule_reference=rule("MANUFACTURER").citation,
+                act_section=rule("MANUFACTURER").obligation_section,
+                punishment_section=rule("MANUFACTURER").ladder.section,
                 statutory_penalty=PENALTY_SEC_36_1,
                 field_name="Manufacturer / Packer Address",
                 severity="major",
@@ -242,9 +258,9 @@ class LMPCEvaluator:
             severity = "critical" if is_imported else "major"
             declaration_status["country_of_origin"] = {"status": "MISSING"}
             violations.append(ViolationRecord(
-                rule_reference="Rule 6(1)(aa) & Rule 6(10) - LM(PC) Rules, 2011",
-                act_section="Section 18(1) - Legal Metrology Act, 2009",
-                punishment_section="Section 36(1) - Legal Metrology Act, 2009",
+                rule_reference=rule("COUNTRY_OF_ORIGIN").citation,
+                act_section=rule("COUNTRY_OF_ORIGIN").obligation_section,
+                punishment_section=rule("COUNTRY_OF_ORIGIN").ladder.section,
                 statutory_penalty=PENALTY_SEC_36_1,
                 field_name="Country of Origin",
                 severity=severity,
@@ -270,12 +286,12 @@ class LMPCEvaluator:
         else:
             declaration_status["generic_name"] = {"status": "MISSING"}
             violations.append(ViolationRecord(
-                rule_reference="Rule 6(1)(b) - LM(PC) Rules, 2011",
-                act_section="Section 18(1) - Legal Metrology Act, 2009",
-                punishment_section="Section 36(1) - Legal Metrology Act, 2009",
+                rule_reference=rule("GENERIC_NAME").citation,
+                act_section=rule("GENERIC_NAME").obligation_section,
+                punishment_section=rule("GENERIC_NAME").ladder.section,
                 statutory_penalty=PENALTY_SEC_36_1,
                 field_name="Common / Generic Name",
-                severity="major",
+                severity="minor",
                 description="Common or generic name of the commodity is not declared on the package.",
                 expected_value="Standard common or generic name of the commodity",
                 found_value="Missing",
@@ -307,9 +323,9 @@ class LMPCEvaluator:
         else:
             declaration_status["net_quantity"] = {"status": "MISSING"}
             violations.append(ViolationRecord(
-                rule_reference="Rule 6(1)(c) - LM(PC) Rules, 2011",
-                act_section="Section 18(1) & Section 11(1)(d) - Legal Metrology Act, 2009",
-                punishment_section="Section 36(1) - Legal Metrology Act, 2009",
+                rule_reference=rule("NET_QUANTITY").citation,
+                act_section=rule("NET_QUANTITY").obligation_section,
+                punishment_section=rule("NET_QUANTITY").ladder.section,
                 statutory_penalty=PENALTY_SEC_36_1,
                 field_name="Net Quantity",
                 severity="critical",
@@ -332,9 +348,9 @@ class LMPCEvaluator:
         else:
             declaration_status["manufacture_date"] = {"status": "MISSING"}
             violations.append(ViolationRecord(
-                rule_reference="Rule 6(1)(d) - LM(PC) Rules, 2011",
-                act_section="Section 18(1) - Legal Metrology Act, 2009",
-                punishment_section="Section 36(1) - Legal Metrology Act, 2009",
+                rule_reference=rule("DATE_OF_MANUFACTURE").citation,
+                act_section=rule("DATE_OF_MANUFACTURE").obligation_section,
+                punishment_section=rule("DATE_OF_MANUFACTURE").ladder.section,
                 statutory_penalty=PENALTY_SEC_36_1,
                 field_name="Month & Year of Manufacture/Packing",
                 severity="major",
@@ -347,7 +363,7 @@ class LMPCEvaluator:
                 ),
             ))
 
-        # ----- Check 6: Best Before / Expiry Date (Rule 6(1)(e)) -----
+        # ----- Check 6: Best Before / Expiry Date (Rule 6(1)(da)) -----
         expiry = self._get_value(extractions, "expiry_date")
         best_before = self._get_value(extractions, "best_before")
         expiry_found = expiry or best_before
@@ -360,9 +376,9 @@ class LMPCEvaluator:
         else:
             declaration_status["expiry_date"] = {"status": "MISSING"}
             violations.append(ViolationRecord(
-                rule_reference="Rule 6(1)(da) / Rule 6(1)(e) - LM(PC) Rules, 2011",
-                act_section="Section 18(1) - Legal Metrology Act, 2009",
-                punishment_section="Section 36(1) - Legal Metrology Act, 2009",
+                rule_reference=rule("BEST_BEFORE").citation,
+                act_section=rule("BEST_BEFORE").obligation_section,
+                punishment_section=rule("BEST_BEFORE").ladder.section,
                 statutory_penalty=PENALTY_SEC_36_1,
                 field_name="Best Before / Expiry Date",
                 severity="critical",
@@ -373,12 +389,12 @@ class LMPCEvaluator:
                 expected_value="Best Before / Expiry date (MM/YYYY or 'Best before X months from packaging')",
                 found_value="Missing",
                 legal_proof_summary=(
-                    "Contravening Section 18(1) of the Legal Metrology Act, 2009 read with Rule 6(1)(da) / Rule 6(1)(e) "
+                    "Contravening Section 18(1) of the Legal Metrology Act, 2009 read with Rule 6(1)(da) "
                     "of the LM(PC) Rules, 2011 for perishable, food, and cosmetic commodities."
                 ),
             ))
 
-        # ----- Check 7: MRP (Rule 6(1)(f)) -----
+        # ----- Check 7: MRP (Rule 6(1)(e)) -----
         mrp_str = self._get_value(extractions, "mrp")
         mrp_incl_tax = self._get_value(extractions, "mrp_includes_taxes")
 
@@ -392,9 +408,9 @@ class LMPCEvaluator:
 
             if mrp_incl_tax is False:
                 violations.append(ViolationRecord(
-                    rule_reference="Rule 6(1)(f) - LM(PC) Rules, 2011",
+                    rule_reference=rule("MRP").citation,
                     act_section="Section 11(1)(a) & Section 18(1) - Legal Metrology Act, 2009",
-                    punishment_section="Section 36(1) - Legal Metrology Act, 2009",
+                    punishment_section=rule("MRP").ladder.section,
                     statutory_penalty=PENALTY_SEC_36_1,
                     field_name="MRP Tax Clause",
                     severity="minor",
@@ -402,16 +418,16 @@ class LMPCEvaluator:
                     expected_value="MRP ₹XX (inclusive of all taxes) or 'incl. of all taxes'",
                     found_value=f"₹{mrp_str} without tax clause",
                     legal_proof_summary=(
-                        "Rule 6(1)(f) explicitly mandates that retail sale price must state 'inclusive of all taxes' "
+                        "Rule 6(1)(e) explicitly mandates that retail sale price must state 'inclusive of all taxes' "
                         "to protect consumers from unstated tax markups at point of sale."
                     ),
                 ))
         else:
             declaration_status["mrp"] = {"status": "MISSING"}
             violations.append(ViolationRecord(
-                rule_reference="Rule 6(1)(f) [formerly 6(1)(e)] - LM(PC) Rules, 2011",
-                act_section="Section 18(1) - Legal Metrology Act, 2009",
-                punishment_section="Section 36(1) - Legal Metrology Act, 2009",
+                rule_reference=rule("MRP").citation,
+                act_section=rule("MRP").obligation_section,
+                punishment_section=rule("MRP").ladder.section,
                 statutory_penalty=PENALTY_SEC_36_1,
                 field_name="Maximum Retail Price (MRP)",
                 severity="critical",
@@ -419,13 +435,13 @@ class LMPCEvaluator:
                 expected_value="MRP ₹XX (inclusive of all taxes)",
                 found_value="Missing",
                 legal_proof_summary=(
-                    "Contravening Section 18(1) of the Legal Metrology Act, 2009 read with Rule 6(1)(f) "
+                    "Contravening Section 18(1) of the Legal Metrology Act, 2009 read with Rule 6(1)(e) "
                     "of the LM(PC) Rules, 2011. Pre-packaged commodities sold without declared retail sale price "
                     "are illegal non-standard packages under Section 36(1)."
                 ),
             ))
 
-        # ----- Check 8: Unit Sale Price (2021 Statutory Amendment) -----
+        # ----- Check 8: Unit Sale Price (Rule 6(11)) -----
         usp_str = self._get_value(extractions, "unit_sale_price")
         computed_usp = self._compute_usp(mrp_str, net_value, net_unit)
 
@@ -442,15 +458,15 @@ class LMPCEvaluator:
                 "computed": computed_usp,
             }
             violations.append(ViolationRecord(
-                rule_reference="Rule 6(11) (2021 Second Amendment, G.S.R. 779(E)) - LM(PC) Rules, 2011",
-                act_section="Section 18(1) - Legal Metrology Act, 2009",
-                punishment_section="Section 36(1) - Legal Metrology Act, 2009",
+                rule_reference=rule("UNIT_SALE_PRICE").citation,
+                act_section=rule("UNIT_SALE_PRICE").obligation_section,
+                punishment_section=rule("UNIT_SALE_PRICE").ladder.section,
                 statutory_penalty=PENALTY_SEC_36_1,
                 field_name="Unit Sale Price (USP)",
                 severity="major",
                 description=(
-                    "Unit Sale Price is not declared. Mandatory under the 2021 Second Amendment "
-                    "(Notification G.S.R. 779(E)) for all pre-packaged commodities."
+                    "Unit Sale Price is not declared. Mandatory under Rule 6(11) "
+                    "(inserted by G.S.R. 779(E)) for all pre-packaged commodities."
                 ),
                 expected_value=computed_usp or "₹X.XX per g/ml/kg/l/unit",
                 found_value="Missing",
@@ -485,9 +501,9 @@ class LMPCEvaluator:
                 if not care_email:
                     missing_parts.append("email address")
                 violations.append(ViolationRecord(
-                    rule_reference="Rule 6(1)(n) - LM(PC) Rules, 2011",
-                    act_section="Section 18(1) - Legal Metrology Act, 2009",
-                    punishment_section="Section 36(1) - Legal Metrology Act, 2009",
+                    rule_reference=rule("CONSUMER_CARE").citation,
+                    act_section=rule("CONSUMER_CARE").obligation_section,
+                    punishment_section=rule("CONSUMER_CARE").ladder.section,
                     statutory_penalty=PENALTY_SEC_36_1,
                     field_name="Consumer Care Details",
                     severity="major",
@@ -502,9 +518,9 @@ class LMPCEvaluator:
         else:
             declaration_status["consumer_care"] = {"status": "MISSING"}
             violations.append(ViolationRecord(
-                rule_reference="Rule 6(1)(n) [formerly 6(1)(f)] - LM(PC) Rules, 2011",
-                act_section="Section 18(1) - Legal Metrology Act, 2009",
-                punishment_section="Section 36(1) - Legal Metrology Act, 2009",
+                rule_reference=rule("CONSUMER_CARE").citation,
+                act_section=rule("CONSUMER_CARE").obligation_section,
+                punishment_section=rule("CONSUMER_CARE").ladder.section,
                 statutory_penalty=PENALTY_SEC_36_1,
                 field_name="Consumer Care / Grievance Details",
                 severity="major",
@@ -667,9 +683,9 @@ class LMPCEvaluator:
         if unit_lower in ILLEGAL_UNIT_MAP:
             correct = ILLEGAL_UNIT_MAP[unit_lower]
             return ViolationRecord(
-                rule_reference="Rule 6(1)(c) & Second Schedule - LM(PC) Rules, 2011",
-                act_section="Section 11(1)(d) read with Sections 4 & 5 - Legal Metrology Act, 2009",
-                punishment_section="Section 29 - Legal Metrology Act, 2009",
+                rule_reference=rule("NET_QUANTITY_UNIT_FORMAT").citation,
+                act_section=rule("NET_QUANTITY_UNIT_FORMAT").obligation_section,
+                punishment_section=rule("NET_QUANTITY_UNIT_FORMAT").ladder.section,
                 statutory_penalty=PENALTY_SEC_29,
                 field_name="Net Quantity Unit Format",
                 severity="major",
@@ -682,14 +698,14 @@ class LMPCEvaluator:
                 legal_proof_summary=(
                     f"Section 11(1)(d) of the Legal Metrology Act, 2009 explicitly prohibits quoting or "
                     f"indicating net quantity in non-standard units or unauthorized abbreviations (such as '{unit}'). "
-                    f"Violations are punishable under Section 29 with fine up to ₹10,000 / imprisonment."
+                    f"Under the Jan Vishwas Act, 2026, first contraventions attract an Improvement Notice under Section 15(6)."
                 ),
             )
 
         return ViolationRecord(
-            rule_reference="Rule 6(1)(c) & Second Schedule - LM(PC) Rules, 2011",
-            act_section="Section 11(1)(d) - Legal Metrology Act, 2009",
-            punishment_section="Section 29 - Legal Metrology Act, 2009",
+            rule_reference=rule("NET_QUANTITY_UNIT_FORMAT").citation,
+            act_section=rule("NET_QUANTITY_UNIT_FORMAT").obligation_section,
+            punishment_section=rule("NET_QUANTITY_UNIT_FORMAT").ladder.section,
             statutory_penalty=PENALTY_SEC_29,
             field_name="Net Quantity Unit Format",
             severity="major",

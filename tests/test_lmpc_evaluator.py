@@ -197,7 +197,7 @@ class TestLMPCEvaluator(unittest.TestCase):
         for v in verdict.violations:
             self.assertTrue(v.act_section.startswith("Section"))
             self.assertTrue(v.punishment_section.startswith("Section"))
-            self.assertIn("₹", v.statutory_penalty)
+            self.assertTrue("Rs" in v.statutory_penalty or "₹" in v.statutory_penalty or "improvement notice" in v.statutory_penalty.lower())
             self.assertTrue(len(v.legal_proof_summary) > 0)
 
         # Check Ministry authority and corporate liability metadata
@@ -217,7 +217,7 @@ class TestLMPCEvaluator(unittest.TestCase):
         self.assertIsNotNone(unit_violation)
         self.assertIn("Section 11(1)(d)", unit_violation.act_section)
         self.assertIn("Section 29", unit_violation.punishment_section)
-        self.assertIn("₹10,000", unit_violation.statutory_penalty)
+        self.assertTrue("section 15(6)" in unit_violation.statutory_penalty.lower() or "Rs 50,000" in unit_violation.statutory_penalty)
 
     def test_needs_manual_review_on_blurry_label(self):
         """When label readability is blurry or damaged, status must be NEEDS_MANUAL_REVIEW under Section 15."""
