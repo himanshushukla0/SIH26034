@@ -44,17 +44,17 @@ function LmpcBrandLogo() {
       style={{
         width: "44px",
         height: "44px",
-        borderRadius: "10px",
-        background: "linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(14, 165, 233, 0.15) 100%)",
-        border: "1.5px solid #38bdf8",
-        boxShadow: "0 0 16px rgba(56, 189, 248, 0.25)",
+        borderRadius: "8px",
+        background: "linear-gradient(135deg, #003366 0%, #0b3b60 100%)",
+        border: "1.5px solid #002244",
+        boxShadow: "0 2px 8px rgba(0, 51, 102, 0.25)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
       }}
     >
-      <Scale size={24} color="#38bdf8" />
+      <Scale size={24} color="#ffffff" />
     </div>
   );
 }
@@ -240,9 +240,9 @@ export default function App() {
             <button
               onClick={() => setFontSizeOffset(-1)}
               style={{
-                background: fontSizeOffset === -1 ? "var(--border-str)" : "transparent",
-                color: "var(--text)",
-                border: "1px solid var(--border)",
+                background: fontSizeOffset === -1 ? "rgba(255, 255, 255, 0.25)" : "transparent",
+                color: "#ffffff",
+                border: "1px solid rgba(255, 255, 255, 0.4)",
                 borderRadius: "3px",
                 padding: "1px 5px",
                 cursor: "pointer",
@@ -255,9 +255,9 @@ export default function App() {
             <button
               onClick={() => setFontSizeOffset(0)}
               style={{
-                background: fontSizeOffset === 0 ? "var(--border-str)" : "transparent",
-                color: "var(--text)",
-                border: "1px solid var(--border)",
+                background: fontSizeOffset === 0 ? "rgba(255, 255, 255, 0.25)" : "transparent",
+                color: "#ffffff",
+                border: "1px solid rgba(255, 255, 255, 0.4)",
                 borderRadius: "3px",
                 padding: "1px 5px",
                 cursor: "pointer",
@@ -270,9 +270,9 @@ export default function App() {
             <button
               onClick={() => setFontSizeOffset(1)}
               style={{
-                background: fontSizeOffset === 1 ? "var(--border-str)" : "transparent",
-                color: "var(--text)",
-                border: "1px solid var(--border)",
+                background: fontSizeOffset === 1 ? "rgba(255, 255, 255, 0.25)" : "transparent",
+                color: "#ffffff",
+                border: "1px solid rgba(255, 255, 255, 0.4)",
                 borderRadius: "3px",
                 padding: "1px 5px",
                 cursor: "pointer",
@@ -284,13 +284,13 @@ export default function App() {
             </button>
           </div>
 
-          <span style={{ color: "var(--border)" }}>|</span>
+          <span style={{ color: "rgba(255, 255, 255, 0.4)" }}>|</span>
           <button
             onClick={toggleLang}
             style={{
-              background: "rgba(56, 189, 248, 0.15)",
-              color: "#38bdf8",
-              border: "1px solid rgba(56, 189, 248, 0.4)",
+              background: "rgba(255, 255, 255, 0.15)",
+              color: "#ffffff",
+              border: "1px solid rgba(255, 255, 255, 0.35)",
               borderRadius: "4px",
               padding: "2px 8px",
               cursor: "pointer",

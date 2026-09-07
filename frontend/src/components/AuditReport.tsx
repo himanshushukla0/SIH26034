@@ -96,20 +96,22 @@ export default function AuditReport({
         style={{
           padding: "var(--space-md) var(--space-lg)",
           marginBottom: "var(--space-lg)",
-          borderLeft: "4px solid #38bdf8",
-          background: "rgba(15, 23, 42, 0.6)",
+          border: "1px solid #bfdbfe",
+          borderLeft: "4px solid var(--gov-navy)",
+          background: "#eff6ff",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
           gap: "var(--space-sm)",
+          borderRadius: "8px",
         }}
       >
         <div>
-          <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#38bdf8", fontWeight: 700 }}>
+          <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gov-navy)", fontWeight: 700 }}>
             {t("act_reference_subtitle")}
           </div>
-          <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)", marginTop: "2px" }}>
+          <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text)", marginTop: "2px" }}>
             {t("statutory_audit_banner")}
           </div>
           <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
@@ -118,8 +120,17 @@ export default function AuditReport({
         </div>
         <button
           onClick={handlePrint}
-          className="btn-secondary"
-          style={{ padding: "6px 14px", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px" }}
+          className="btn btn-outline"
+          style={{
+            padding: "6px 14px",
+            fontSize: "0.8rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            background: "#ffffff",
+            color: "var(--gov-navy)",
+            borderColor: "var(--gov-navy)",
+          }}
         >
           <Printer size={14} /> {t("print_notice_btn")}
         </button>
@@ -132,21 +143,23 @@ export default function AuditReport({
           style={{
             padding: "var(--space-md) var(--space-lg)",
             marginBottom: "var(--space-lg)",
-            borderLeft: "4px solid #f59e0b",
-            background: "rgba(245, 158, 11, 0.08)",
+            border: "1px solid #fde68a",
+            borderLeft: "4px solid #d97706",
+            background: "#fffbeb",
+            borderRadius: "8px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#fbbf24", fontWeight: 700, fontSize: "0.9rem" }}>
-            <AlertTriangle size={18} />
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#92400e", fontWeight: 700, fontSize: "0.9rem" }}>
+            <AlertTriangle size={18} color="#d97706" />
             STATUTORY INSPECTION DIRECTIVE UNDER SECTION 15
           </div>
-          <p style={{ margin: "6px 0 0 0", fontSize: "0.82rem", color: "#fde68a", lineHeight: 1.5 }}>
+          <p style={{ margin: "6px 0 0 0", fontSize: "0.82rem", color: "#78350f", lineHeight: 1.5 }}>
             The automated scan detected optical uncertainty (low OCR confidence, motion blur, or damaged label surface).
             Under <strong>Section 15 of the Legal Metrology Act, 2009</strong>, an authorized Legal Metrology Officer
             must conduct physical inspection of the pre-packaged commodity before issuing formal penalty summons.
           </p>
           {verdict.manual_review_reasons && verdict.manual_review_reasons.length > 0 && (
-            <ul style={{ margin: "8px 0 0 16px", padding: 0, fontSize: "0.78rem", color: "#fef3c7" }}>
+            <ul style={{ margin: "8px 0 0 16px", padding: 0, fontSize: "0.78rem", color: "#92400e" }}>
               {verdict.manual_review_reasons.map((r, i) => (
                 <li key={i}>{r}</li>
               ))}
@@ -283,13 +296,14 @@ export default function AuditReport({
                 style={{
                   marginTop: "var(--space-md)",
                   padding: "var(--space-sm) var(--space-md)",
-                  background: "rgba(99, 102, 241, 0.1)",
+                  background: "#eff6ff",
+                  border: "1px solid #bfdbfe",
                   borderRadius: "var(--radius-sm)",
                   fontSize: "0.8rem",
                 }}
               >
                 <span style={{ color: "var(--text-muted)" }}>{t("computed_usp_label")} </span>
-                <span style={{ fontWeight: 700, color: "var(--text-accent)" }}>
+                <span style={{ fontWeight: 700, color: "var(--gov-navy)" }}>
                   {verdict.computed_usp}
                 </span>
               </div>
@@ -308,8 +322,9 @@ export default function AuditReport({
                   gap: "0.5rem",
                   fontSize: "0.8rem",
                   padding: "0.6rem 0.8rem",
-                  borderColor: "rgba(99, 102, 241, 0.4)",
-                  color: "#a5b4fc",
+                  borderColor: "var(--gov-navy)",
+                  color: "var(--gov-navy)",
+                  background: "#ffffff",
                 }}
               >
                 <Printer size={14} />

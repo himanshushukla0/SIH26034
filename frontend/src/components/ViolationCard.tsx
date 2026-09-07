@@ -29,12 +29,12 @@ export default function ViolationCard({ violation, index }: ViolationCardProps) 
       <div className="violation-header" style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
         <span className="violation-rule">{violation.rule_reference}</span>
         {violation.act_section && (
-          <span style={{ fontSize: "0.75rem", background: "rgba(14, 165, 233, 0.15)", color: "#38bdf8", padding: "2px 8px", borderRadius: "4px", fontWeight: 600 }}>
+          <span style={{ fontSize: "0.75rem", background: "#eff6ff", color: "var(--gov-navy)", border: "1px solid #bfdbfe", padding: "2px 8px", borderRadius: "4px", fontWeight: 600 }}>
             🏛️ {violation.act_section}
           </span>
         )}
         {violation.punishment_section && (
-          <span style={{ fontSize: "0.75rem", background: "rgba(239, 68, 68, 0.15)", color: "#f87171", padding: "2px 8px", borderRadius: "4px", fontWeight: 600 }}>
+          <span style={{ fontSize: "0.75rem", background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", padding: "2px 8px", borderRadius: "4px", fontWeight: 600 }}>
             ⚖️ {violation.punishment_section}
           </span>
         )}
@@ -48,8 +48,8 @@ export default function ViolationCard({ violation, index }: ViolationCardProps) 
       <div className="violation-desc">{violation.description}</div>
 
       {violation.legal_proof_summary && (
-        <div style={{ marginTop: "8px", padding: "8px 12px", background: "rgba(255, 255, 255, 0.03)", borderLeft: "3px solid #38bdf8", borderRadius: "4px", fontSize: "0.8rem", color: "#cbd5e1", lineHeight: 1.5 }}>
-          <strong style={{ color: "#38bdf8" }}>Statutory Proof:</strong> {violation.legal_proof_summary}
+        <div style={{ marginTop: "8px", padding: "8px 12px", background: "#f8fafc", border: "1px solid var(--border)", borderLeft: "3px solid var(--gov-navy)", borderRadius: "4px", fontSize: "0.8rem", color: "#1e293b", lineHeight: 1.5 }}>
+          <strong style={{ color: "var(--gov-navy)" }}>Statutory Proof:</strong> {violation.legal_proof_summary}
         </div>
       )}
 
@@ -69,7 +69,7 @@ export default function ViolationCard({ violation, index }: ViolationCardProps) 
       )}
 
       {violation.statutory_penalty && (
-        <div style={{ marginTop: "8px", fontSize: "0.75rem", color: "#fca5a5", background: "rgba(225, 29, 72, 0.1)", padding: "6px 10px", borderRadius: "4px", border: "1px solid rgba(225, 29, 72, 0.2)" }}>
+        <div style={{ marginTop: "8px", fontSize: "0.75rem", color: "#991b1b", background: "#fef2f2", padding: "6px 10px", borderRadius: "4px", border: "1px solid #fecaca" }}>
           <strong>Statutory Penalty:</strong> {violation.statutory_penalty}
         </div>
       )}
@@ -79,10 +79,11 @@ export default function ViolationCard({ violation, index }: ViolationCardProps) 
           style={{
             marginTop: "var(--space-sm)",
             padding: "var(--space-xs) var(--space-sm)",
-            background: "rgba(244, 63, 94, 0.1)",
+            background: "#fff1f2",
+            border: "1px solid #fecdd3",
             borderRadius: "var(--radius-sm)",
             fontSize: "0.75rem",
-            color: "var(--accent-rose)",
+            color: "#be123c",
             fontWeight: 600,
             display: "inline-block",
           }}

@@ -211,7 +211,7 @@ export default function AnalyticsDashboard() {
                   <XAxis dataKey="name" stroke="#64748b" fontSize={11} angle={-15} textAnchor="end" />
                   <YAxis stroke="#64748b" fontSize={11} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", borderRadius: 8 }}
+                    contentStyle={{ backgroundColor: "#ffffff", borderColor: "#cbd5e1", borderRadius: 8, color: "#0f172a", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
                   />
                   <Bar dataKey="Violations" fill="#ef4444" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -236,9 +236,9 @@ export default function AnalyticsDashboard() {
                   <XAxis dataKey="name" stroke="#64748b" fontSize={11} angle={-15} textAnchor="end" />
                   <YAxis stroke="#64748b" fontSize={11} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", borderRadius: 8 }}
+                    contentStyle={{ backgroundColor: "#ffffff", borderColor: "#cbd5e1", borderRadius: 8, color: "#0f172a", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
                   />
-                  <Bar dataKey="Count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Count" fill="#003366" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -258,9 +258,9 @@ export default function AnalyticsDashboard() {
                   <XAxis dataKey="name" stroke="#64748b" fontSize={11} angle={-15} textAnchor="end" />
                   <YAxis stroke="#64748b" fontSize={11} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", borderRadius: 8 }}
+                    contentStyle={{ backgroundColor: "#ffffff", borderColor: "#cbd5e1", borderRadius: 8, color: "#0f172a", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
                   />
-                  <Bar dataKey="Infractions" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Infractions" fill="#d97706" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -298,13 +298,13 @@ export default function AnalyticsDashboard() {
                 {data.recent_audits.map((a) => {
                   const statusClass =
                     a.overall_status === "COMPLIANT"
-                      ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                      ? "text-emerald-800 bg-emerald-50 border-emerald-300"
                       : a.overall_status === "NEEDS_MANUAL_REVIEW"
-                      ? "text-amber-400 bg-amber-500/10 border-amber-500/20"
-                      : "text-rose-400 bg-rose-500/10 border-rose-500/20";
+                      ? "text-amber-800 bg-amber-50 border-amber-300"
+                      : "text-rose-800 bg-rose-50 border-rose-300";
 
                   return (
-                    <tr key={a.id} className="border-b border-border/50 hover:bg-surface/60 transition-colors">
+                    <tr key={a.id} className="border-b border-border/50 hover:bg-slate-50 transition-colors">
                       <td className="py-2.5 px-3 text-xs font-mono text-muted">
                         {a.created_at ? new Date(a.created_at).toLocaleString("en-IN") : "—"}
                       </td>
@@ -330,7 +330,7 @@ export default function AnalyticsDashboard() {
                           href={`/api/report/html/${a.id}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs text-accent hover:underline font-mono"
+                          className="text-xs text-blue-800 hover:underline font-mono font-semibold"
                         >
                           View Notice ↗
                         </a>

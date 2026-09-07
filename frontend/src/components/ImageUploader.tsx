@@ -15,39 +15,39 @@ async function generateSamplePackaging(type: "compliant" | "violation"): Promise
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas context failed");
 
-  // Premium background gradient
+  // Official government packaging mock canvas
   const bgGrad = ctx.createLinearGradient(0, 0, 1000, 750);
   if (type === "compliant") {
-    bgGrad.addColorStop(0, "#082f49");
-    bgGrad.addColorStop(1, "#0f172a");
+    bgGrad.addColorStop(0, "#f8fafc");
+    bgGrad.addColorStop(1, "#f1f5f9");
   } else {
-    bgGrad.addColorStop(0, "#450a0a");
-    bgGrad.addColorStop(1, "#0f172a");
+    bgGrad.addColorStop(0, "#fff5f5");
+    bgGrad.addColorStop(1, "#fee2e2");
   }
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, 1000, 750);
 
   // Outer border & decorative packaging frame
-  ctx.strokeStyle = type === "compliant" ? "#06b6d4" : "#f43f5e";
+  ctx.strokeStyle = type === "compliant" ? "#003366" : "#dc2626";
   ctx.lineWidth = 6;
   ctx.strokeRect(30, 30, 940, 690);
 
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+  ctx.strokeStyle = "rgba(0, 51, 102, 0.2)";
   ctx.lineWidth = 1;
   ctx.strokeRect(40, 40, 920, 670);
 
   // Header / Brand Title
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = "#003366";
   ctx.font = "bold 44px 'Segoe UI', Arial, sans-serif";
   const title = type === "compliant" ? "TATA TEA GOLD 500g" : "IMPORTED CHOCO CRUNCH 300g";
   ctx.fillText(title, 60, 105);
 
-  ctx.fillStyle = "#38bdf8";
+  ctx.fillStyle = "#0284c7";
   ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
   ctx.fillText("PRINCIPAL DISPLAY PANEL (PDP) — STATUTORY DECLARATION", 60, 150);
 
   // Declaration text lines
-  ctx.fillStyle = "#e2e8f0";
+  ctx.fillStyle = "#0f172a";
   ctx.font = "22px 'Segoe UI', Arial, sans-serif";
   let y = 205;
   const step = 42;
@@ -86,7 +86,10 @@ async function generateSamplePackaging(type: "compliant" | "violation"): Promise
 
   // Barcode Mockup
   ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 2;
   ctx.fillRect(680, 560, 260, 110);
+  ctx.strokeRect(680, 560, 260, 110);
   ctx.fillStyle = "#000000";
   ctx.font = "bold 26px monospace";
   ctx.fillText("||| || |||| |||", 700, 620);
@@ -180,8 +183,8 @@ export default function ImageUploader({ onFileSelect, isLoading }: ImageUploader
                 width: "100%",
                 maxHeight: "450px",
                 objectFit: "contain",
-                borderRadius: "16px",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
               }}
             />
             {!isLoading && (
@@ -196,8 +199,10 @@ export default function ImageUploader({ onFileSelect, isLoading }: ImageUploader
                   position: "absolute",
                   top: "var(--space-md)",
                   right: "var(--space-md)",
-                  background: "rgba(10, 15, 30, 0.85)",
-                  backdropFilter: "blur(10px)",
+                  background: "#ffffff",
+                  color: "var(--gov-navy)",
+                  border: "1px solid var(--gov-navy)",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
                 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -223,14 +228,16 @@ export default function ImageUploader({ onFileSelect, isLoading }: ImageUploader
               padding: "3rem 2rem",
               cursor: "pointer",
               border: isDragging
-                ? "2px dashed #00e5ff"
-                : "2px dashed rgba(99, 102, 241, 0.35)",
+                ? "2px dashed var(--gov-navy)"
+                : "2px dashed var(--gov-navy-light)",
               background: isDragging
-                ? "rgba(6, 182, 212, 0.1)"
-                : "rgba(14, 22, 45, 0.65)",
+                ? "#eff6ff"
+                : "#ffffff",
               boxShadow: isDragging
-                ? "0 0 35px rgba(6, 182, 212, 0.3)"
-                : "0 10px 30px rgba(0, 0, 0, 0.4)",
+                ? "0 4px 20px rgba(0, 51, 102, 0.15)"
+                : "var(--shadow-card)",
+              borderRadius: "10px",
+              textAlign: "center",
             }}
           >
             <motion.div
@@ -238,27 +245,27 @@ export default function ImageUploader({ onFileSelect, isLoading }: ImageUploader
               animate={{ y: isDragging ? -8 : 0 }}
               transition={{ type: "spring", stiffness: 300 }}
               style={{
-                width: "70px",
-                height: "70px",
-                borderRadius: "20px",
-                background: "linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(6, 182, 212, 0.25) 100%)",
-                border: "1px solid rgba(6, 182, 212, 0.4)",
+                width: "68px",
+                height: "68px",
+                borderRadius: "12px",
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto 1.25rem",
-                color: "#38bdf8",
+                color: "var(--gov-navy)",
               }}
             >
-              {isDragging ? <Camera size={36} /> : <Upload size={36} />}
+              {isDragging ? <Camera size={34} /> : <Upload size={34} />}
             </motion.div>
-            <div className="upload-zone-title" style={{ fontSize: "1.25rem", fontWeight: 700, color: "#f8fafc" }}>
+            <div className="upload-zone-title" style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--gov-navy-dark)" }}>
               {isDragging ? "Drop packaging photo here" : "Upload Packaging Photo for Multimodal OCR"}
             </div>
-            <div className="upload-zone-subtitle" style={{ fontSize: "0.88rem", color: "#94a3b8", marginTop: "0.4rem" }}>
+            <div className="upload-zone-subtitle" style={{ fontSize: "0.88rem", color: "var(--text-secondary)", marginTop: "0.4rem" }}>
               Drag & drop market raid packaging labels or click to browse.
               <br />
-              Supports JPEG, PNG, WebP — evaluated directly by Gemini 3.6 Flash Vision.
+              Supports JPEG, PNG, WebP — evaluated directly under Legal Metrology Rules, 2011.
             </div>
           </div>
 
@@ -266,10 +273,10 @@ export default function ImageUploader({ onFileSelect, isLoading }: ImageUploader
           <div
             style={{
               padding: "1.1rem 1.25rem",
-              borderRadius: "16px",
-              background: "rgba(15, 23, 42, 0.65)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              backdropFilter: "blur(12px)",
+              borderRadius: "10px",
+              background: "#ffffff",
+              border: "1px solid var(--border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div
@@ -279,62 +286,74 @@ export default function ImageUploader({ onFileSelect, isLoading }: ImageUploader
                 gap: "0.5rem",
                 fontSize: "0.8rem",
                 fontWeight: 700,
-                color: "#94a3b8",
+                color: "var(--gov-navy)",
                 textTransform: "uppercase",
                 letterSpacing: "0.05em",
                 marginBottom: "0.75rem",
               }}
             >
-              <Sparkles size={15} color="#f59e0b" />
+              <Sparkles size={15} color="#d97706" />
               <span>Instant Test Samples (No File Upload Needed):</span>
             </div>
 
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
               <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleQuickSample("compliant")}
                 className="demo-chip"
                 type="button"
                 style={{
                   flex: 1,
                   minWidth: "220px",
-                  padding: "0.75rem 1rem",
-                  border: "1px solid rgba(16, 185, 129, 0.35)",
-                  background: "rgba(16, 185, 129, 0.08)",
+                  padding: "0.85rem 1rem",
+                  border: "1px solid #86efac",
+                  background: "#f0fdf4",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "0.75rem",
+                  cursor: "pointer",
+                  textAlign: "left",
                 }}
               >
-                <FileText size={18} color="#10b981" />
+                <FileText size={20} color="#15803d" style={{ marginTop: "2px", flexShrink: 0 }} />
                 <div>
-                  <div style={{ fontWeight: 700, color: "#34d399", fontSize: "0.82rem" }}>
+                  <div style={{ fontWeight: 700, color: "#15803d", fontSize: "0.85rem" }}>
                     Sample A: Fully Compliant Label
                   </div>
-                  <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
+                  <div style={{ fontSize: "0.72rem", color: "#475569", marginTop: "2px" }}>
                     Tata Tea Gold 500g (All 10 rules passed)
                   </div>
                 </div>
               </motion.button>
 
               <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleQuickSample("violation")}
                 className="demo-chip"
                 type="button"
                 style={{
                   flex: 1,
                   minWidth: "220px",
-                  padding: "0.75rem 1rem",
-                  border: "1px solid rgba(239, 68, 68, 0.35)",
-                  background: "rgba(239, 68, 68, 0.08)",
+                  padding: "0.85rem 1rem",
+                  border: "1px solid #fca5a5",
+                  background: "#fef2f2",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "0.75rem",
+                  cursor: "pointer",
+                  textAlign: "left",
                 }}
               >
-                <FileText size={18} color="#ef4444" />
+                <FileText size={20} color="#b91c1c" style={{ marginTop: "2px", flexShrink: 0 }} />
                 <div>
-                  <div style={{ fontWeight: 700, color: "#f87171", fontSize: "0.82rem" }}>
+                  <div style={{ fontWeight: 700, color: "#b91c1c", fontSize: "0.85rem" }}>
                     Sample B: Violation & Tampered Label
                   </div>
-                  <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
+                  <div style={{ fontSize: "0.72rem", color: "#475569", marginTop: "2px" }}>
                     Choco Crunch (Missing USP, fake FSSAI, expired)
                   </div>
                 </div>

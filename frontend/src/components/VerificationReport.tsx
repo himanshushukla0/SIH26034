@@ -42,23 +42,23 @@ const CHECK_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
 /** Status badge colors. */
 const STATUS_STYLES: Record<string, { bg: string; color: string; icon: React.ReactNode }> = {
   VERIFIED: {
-    bg: "rgba(0, 255, 100, 0.1)",
-    color: "#00ff64",
+    bg: "#ecfdf5",
+    color: "#15803d",
     icon: <CheckCircle2 size={16} />,
   },
   FAILED: {
-    bg: "rgba(255, 50, 50, 0.1)",
-    color: "#ff4444",
+    bg: "#fef2f2",
+    color: "#b91c1c",
     icon: <XCircle size={16} />,
   },
   WARNING: {
-    bg: "rgba(255, 171, 0, 0.1)",
-    color: "#ffab00",
+    bg: "#fffbeb",
+    color: "#b45309",
     icon: <AlertTriangle size={16} />,
   },
   UNVERIFIABLE: {
-    bg: "rgba(120, 130, 170, 0.1)",
-    color: "rgba(160, 170, 210, 0.7)",
+    bg: "#f1f5f9",
+    color: "#64748b",
     icon: <HelpCircle size={16} />,
   },
 };
@@ -69,20 +69,20 @@ export default function VerificationReport({ verification }: VerificationReportP
   // Verdict styling
   const verdictConfig: Record<string, { color: string; gradient: string; icon: React.ReactNode; label: string }> = {
     AUTHENTIC: {
-      color: "#00ff64",
-      gradient: "linear-gradient(135deg, rgba(0, 255, 100, 0.08), rgba(0, 200, 80, 0.04))",
+      color: "#15803d",
+      gradient: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
       icon: <ShieldCheck size={32} />,
       label: "AUTHENTIC",
     },
     SUSPICIOUS: {
-      color: "#ffab00",
-      gradient: "linear-gradient(135deg, rgba(255, 171, 0, 0.08), rgba(255, 140, 0, 0.04))",
+      color: "#b45309",
+      gradient: "linear-gradient(135deg, #fffbeb, #fef3c7)",
       icon: <ShieldAlert size={32} />,
       label: "SUSPICIOUS",
     },
     COUNTERFEIT_RISK: {
-      color: "#ff4444",
-      gradient: "linear-gradient(135deg, rgba(255, 50, 50, 0.08), rgba(255, 30, 30, 0.04))",
+      color: "#b91c1c",
+      gradient: "linear-gradient(135deg, #fef2f2, #fee2e2)",
       icon: <ShieldX size={32} />,
       label: "COUNTERFEIT RISK",
     },
@@ -92,11 +92,11 @@ export default function VerificationReport({ verification }: VerificationReportP
 
   // Expiry status styling
   const expiryConfig: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
-    VALID: { color: "#00ff64", icon: <CheckCircle2 size={16} />, label: "Valid" },
-    EXPIRED: { color: "#ff4444", icon: <Skull size={16} />, label: "EXPIRED" },
-    NEAR_EXPIRY: { color: "#ffab00", icon: <Timer size={16} />, label: "Near Expiry" },
-    DATE_TAMPERED: { color: "#ff4444", icon: <AlertTriangle size={16} />, label: "Date Tampered!" },
-    UNKNOWN: { color: "rgba(160, 170, 210, 0.7)", icon: <HelpCircle size={16} />, label: "Unknown" },
+    VALID: { color: "#15803d", icon: <CheckCircle2 size={16} />, label: "Valid" },
+    EXPIRED: { color: "#b91c1c", icon: <Skull size={16} />, label: "EXPIRED" },
+    NEAR_EXPIRY: { color: "#b45309", icon: <Timer size={16} />, label: "Near Expiry" },
+    DATE_TAMPERED: { color: "#b91c1c", icon: <AlertTriangle size={16} />, label: "Date Tampered!" },
+    UNKNOWN: { color: "#64748b", icon: <HelpCircle size={16} />, label: "Unknown" },
   };
 
   const expiry = expiryConfig[expiry_status] || expiryConfig.UNKNOWN;
@@ -144,7 +144,7 @@ export default function VerificationReport({ verification }: VerificationReportP
               <circle
                 cx="50" cy="50" r="42"
                 fill="none"
-                stroke="rgba(255,255,255,0.06)"
+                stroke="#e2e8f0"
                 strokeWidth="8"
               />
               {/* Score arc */}
@@ -178,9 +178,10 @@ export default function VerificationReport({ verification }: VerificationReportP
               </span>
               <span style={{
                 fontSize: "0.6rem",
-                color: "rgba(180, 190, 220, 0.6)",
+                color: "#64748b",
                 textTransform: "uppercase",
                 letterSpacing: "0.05em",
+                fontWeight: 700,
               }}>
                 Trust
               </span>
@@ -208,9 +209,10 @@ export default function VerificationReport({ verification }: VerificationReportP
           {/* Expiry Status */}
           <div style={{
             padding: "1rem 1.25rem",
-            borderRadius: "14px",
-            background: `${expiry.color}0a`,
-            border: `1px solid ${expiry.color}20`,
+            borderRadius: "10px",
+            background: "#ffffff",
+            border: `1px solid var(--border)`,
+            boxShadow: "var(--shadow-card)",
             display: "flex",
             alignItems: "center",
             gap: "0.75rem",
@@ -222,7 +224,7 @@ export default function VerificationReport({ verification }: VerificationReportP
               </div>
               {days_until_expiry !== null && days_until_expiry !== undefined && (
                 <div style={{
-                  color: "rgba(180, 190, 220, 0.7)",
+                  color: "#64748b",
                   fontSize: "0.75rem",
                   marginTop: "2px",
                 }}>
@@ -237,21 +239,20 @@ export default function VerificationReport({ verification }: VerificationReportP
           {/* Counterfeit Signals */}
           <div style={{
             padding: "1rem 1.25rem",
-            borderRadius: "14px",
-            background: counterfeit_signals > 0
-              ? "rgba(255, 50, 50, 0.06)"
-              : "rgba(0, 255, 100, 0.06)",
-            border: `1px solid ${counterfeit_signals > 0 ? "rgba(255, 50, 50, 0.15)" : "rgba(0, 255, 100, 0.15)"}`,
+            borderRadius: "10px",
+            background: "#ffffff",
+            border: `1px solid var(--border)`,
+            boxShadow: "var(--shadow-card)",
             display: "flex",
             alignItems: "center",
             gap: "0.75rem",
           }}>
             {counterfeit_signals > 0
-              ? <AlertTriangle size={18} color="#ff4444" />
-              : <CheckCircle2 size={18} color="#00ff64" />}
+              ? <AlertTriangle size={18} color="#b91c1c" />
+              : <CheckCircle2 size={18} color="#15803d" />}
             <div>
               <div style={{
-                color: counterfeit_signals > 0 ? "#ff4444" : "#00ff64",
+                color: counterfeit_signals > 0 ? "#b91c1c" : "#15803d",
                 fontSize: "0.8rem",
                 fontWeight: 700,
               }}>
@@ -259,7 +260,7 @@ export default function VerificationReport({ verification }: VerificationReportP
                   ? `${counterfeit_signals} Fraud Signal${counterfeit_signals > 1 ? "s" : ""} Detected`
                   : "No Fraud Signals"}
               </div>
-              <div style={{ color: "rgba(180, 190, 220, 0.6)", fontSize: "0.7rem", marginTop: "2px" }}>
+              <div style={{ color: "#64748b", fontSize: "0.7rem", marginTop: "2px" }}>
                 {checks.filter((c) => c.status === "VERIFIED").length} / {checks.length} checks passed
               </div>
             </div>
@@ -272,19 +273,19 @@ export default function VerificationReport({ verification }: VerificationReportP
             gap: "0.5rem",
           }}>
             {[
-              { label: "Passed", count: checks.filter((c) => c.status === "VERIFIED").length, color: "#00ff64" },
-              { label: "Failed", count: checks.filter((c) => c.status === "FAILED").length, color: "#ff4444" },
-              { label: "Warning", count: checks.filter((c) => c.status === "WARNING").length, color: "#ffab00" },
+              { label: "Passed", count: checks.filter((c) => c.status === "VERIFIED").length, color: "#15803d", bg: "#f0fdf4" },
+              { label: "Failed", count: checks.filter((c) => c.status === "FAILED").length, color: "#b91c1c", bg: "#fef2f2" },
+              { label: "Warning", count: checks.filter((c) => c.status === "WARNING").length, color: "#b45309", bg: "#fffbeb" },
             ].map((s) => (
               <div key={s.label} style={{
                 textAlign: "center",
                 padding: "0.5rem",
-                borderRadius: "10px",
-                background: `${s.color}08`,
-                border: `1px solid ${s.color}15`,
+                borderRadius: "8px",
+                background: s.bg,
+                border: `1px solid var(--border)`,
               }}>
                 <div style={{ fontSize: "1.2rem", fontWeight: 800, color: s.color }}>{s.count}</div>
-                <div style={{ fontSize: "0.65rem", color: "rgba(180, 190, 220, 0.6)" }}>{s.label}</div>
+                <div style={{ fontSize: "0.65rem", color: "#64748b", fontWeight: 600 }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -300,7 +301,7 @@ export default function VerificationReport({ verification }: VerificationReportP
         <h3 style={{
           fontSize: "0.85rem",
           fontWeight: 700,
-          color: "rgba(180, 190, 220, 0.8)",
+          color: "var(--gov-navy-dark)",
           textTransform: "uppercase",
           letterSpacing: "0.08em",
           margin: 0,
@@ -328,9 +329,10 @@ function CheckCard({ check, index }: { check: VerificationCheck; index: number }
       transition={{ delay: index * 0.08, duration: 0.3 }}
       style={{
         padding: "1rem 1.25rem",
-        borderRadius: "14px",
-        background: "rgba(15, 20, 40, 0.6)",
-        border: `1px solid ${statusStyle.color}20`,
+        borderRadius: "10px",
+        background: "#ffffff",
+        border: "1px solid var(--border)",
+        boxShadow: "var(--shadow-card)",
         display: "flex",
         flexDirection: "column",
         gap: "0.6rem",
@@ -346,8 +348,8 @@ function CheckCard({ check, index }: { check: VerificationCheck; index: number }
           <div style={{ color: statusStyle.color }}>{meta.icon}</div>
           <span style={{
             fontSize: "0.9rem",
-            fontWeight: 600,
-            color: "rgba(220, 225, 245, 0.9)",
+            fontWeight: 700,
+            color: "var(--gov-navy-dark)",
           }}>
             {meta.label}
           </span>
@@ -358,9 +360,9 @@ function CheckCard({ check, index }: { check: VerificationCheck; index: number }
           alignItems: "center",
           gap: "0.4rem",
           padding: "0.25rem 0.75rem",
-          borderRadius: "8px",
+          borderRadius: "6px",
           background: statusStyle.bg,
-          border: `1px solid ${statusStyle.color}25`,
+          border: `1px solid ${statusStyle.color}40`,
         }}>
           <span style={{ color: statusStyle.color }}>{statusStyle.icon}</span>
           <span style={{
@@ -378,8 +380,8 @@ function CheckCard({ check, index }: { check: VerificationCheck; index: number }
       {/* Details */}
       <p style={{
         margin: 0,
-        fontSize: "0.8rem",
-        color: "rgba(180, 190, 220, 0.75)",
+        fontSize: "0.85rem",
+        color: "#334155",
         lineHeight: 1.5,
       }}>
         {check.details}
@@ -391,14 +393,14 @@ function CheckCard({ check, index }: { check: VerificationCheck; index: number }
         alignItems: "center",
         gap: "0.5rem",
       }}>
-        <span style={{ fontSize: "0.65rem", color: "rgba(150, 160, 200, 0.5)" }}>
+        <span style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 600 }}>
           Confidence
         </span>
         <div style={{
           flex: 1,
-          height: "4px",
-          borderRadius: "2px",
-          background: "rgba(255, 255, 255, 0.05)",
+          height: "6px",
+          borderRadius: "3px",
+          background: "#e2e8f0",
           overflow: "hidden",
         }}>
           <motion.div
@@ -407,16 +409,16 @@ function CheckCard({ check, index }: { check: VerificationCheck; index: number }
             transition={{ delay: index * 0.08 + 0.3, duration: 0.6 }}
             style={{
               height: "100%",
-              borderRadius: "2px",
+              borderRadius: "3px",
               background: statusStyle.color,
-              opacity: 0.7,
             }}
           />
         </div>
         <span style={{
-          fontSize: "0.65rem",
-          color: "rgba(150, 160, 200, 0.5)",
-          fontFamily: "monospace",
+          fontSize: "0.7rem",
+          color: "#475569",
+          fontFamily: "var(--font-mono)",
+          fontWeight: 600,
           minWidth: "2.5rem",
           textAlign: "right",
         }}>
@@ -431,13 +433,13 @@ function CheckCard({ check, index }: { check: VerificationCheck; index: number }
           alignItems: "center",
           gap: "0.4rem",
           padding: "0.4rem 0.75rem",
-          borderRadius: "8px",
-          background: "rgba(255, 50, 50, 0.08)",
-          border: "1px solid rgba(255, 50, 50, 0.15)",
+          borderRadius: "6px",
+          background: "#fef2f2",
+          border: "1px solid #fecaca",
           alignSelf: "flex-start",
         }}>
-          <AlertTriangle size={13} color="#ff4444" />
-          <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "#ff4444" }}>
+          <AlertTriangle size={13} color="#b91c1c" />
+          <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "#b91c1c" }}>
             COUNTERFEIT SIGNAL
           </span>
         </div>

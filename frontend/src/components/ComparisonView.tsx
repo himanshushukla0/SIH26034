@@ -221,7 +221,7 @@ export default function ComparisonView({
           gap: "1rem",
           marginBottom: "1.5rem",
           paddingBottom: "1.25rem",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+          borderBottom: "1px solid var(--border)",
         }}
       >
         <div>
@@ -239,11 +239,11 @@ export default function ComparisonView({
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
-                background: "rgba(59, 130, 246, 0.2)",
-                color: "#60a5fa",
+                background: "#eff6ff",
+                color: "var(--gov-navy)",
                 padding: "0.2rem 0.6rem",
-                borderRadius: "6px",
-                border: "1px solid rgba(59, 130, 246, 0.3)",
+                borderRadius: "4px",
+                border: "1px solid #bfdbfe",
               }}
             >
               Cross-Modal Verification
@@ -254,18 +254,18 @@ export default function ComparisonView({
                   fontSize: "0.75rem",
                   fontWeight: 600,
                   textTransform: "uppercase",
-                  color: "#94a3b8",
+                  color: "var(--text-muted)",
                 }}
               >
-                Platform: <strong style={{ color: "#e2e8f0" }}>{platform}</strong>
+                Platform: <strong style={{ color: "var(--text)" }}>{platform}</strong>
               </span>
             )}
           </div>
           <h3
             style={{
-              fontSize: "1.25rem",
+              fontSize: "1.2rem",
               fontWeight: 700,
-              color: "#f8fafc",
+              color: "var(--gov-navy-dark)",
               margin: 0,
             }}
           >
@@ -274,7 +274,7 @@ export default function ComparisonView({
           <p
             style={{
               fontSize: "0.85rem",
-              color: "#94a3b8",
+              color: "var(--text-secondary)",
               margin: "0.25rem 0 0",
             }}
           >
@@ -292,11 +292,12 @@ export default function ComparisonView({
               alignItems: "center",
               gap: "0.4rem",
               fontSize: "0.8rem",
-              color: "#38bdf8",
-              background: "rgba(56, 189, 248, 0.1)",
-              border: "1px solid rgba(56, 189, 248, 0.25)",
+              fontWeight: 600,
+              color: "var(--gov-navy)",
+              background: "#ffffff",
+              border: "1px solid var(--gov-navy)",
               padding: "0.4rem 0.8rem",
-              borderRadius: "8px",
+              borderRadius: "6px",
               textDecoration: "none",
               transition: "all 0.2s ease",
             }}
@@ -316,18 +317,18 @@ export default function ComparisonView({
             gap: "0.9rem",
             padding: "1rem 1.25rem",
             marginBottom: "1.5rem",
-            borderRadius: "10px",
-            background: "rgba(239, 68, 68, 0.12)",
-            border: "1px solid rgba(239, 68, 68, 0.4)",
+            borderRadius: "8px",
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
           }}
         >
-          <ShieldAlert size={22} color="#ef4444" style={{ flexShrink: 0, marginTop: "2px" }} />
+          <ShieldAlert size={22} color="#b91c1c" style={{ flexShrink: 0, marginTop: "2px" }} />
           <div>
             <h4
               style={{
                 fontSize: "0.95rem",
                 fontWeight: 700,
-                color: "#f87171",
+                color: "#991b1b",
                 margin: "0 0 0.25rem",
               }}
             >
@@ -336,7 +337,7 @@ export default function ComparisonView({
             <p
               style={{
                 fontSize: "0.825rem",
-                color: "#fca5a5",
+                color: "#7f1d1d",
                 margin: 0,
                 lineHeight: 1.45,
               }}
@@ -369,8 +370,8 @@ export default function ComparisonView({
             fontWeight: 700,
             textTransform: "uppercase",
             letterSpacing: "0.05em",
-            color: "#64748b",
-            borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+            color: "var(--text-muted)",
+            borderBottom: "1px solid var(--border)",
           }}
         >
           <span>Declaration Parameter</span>
@@ -394,15 +395,15 @@ export default function ComparisonView({
                 gap: "1rem",
                 alignItems: "center",
                 padding: "0.85rem 1rem",
-                borderRadius: "10px",
+                borderRadius: "8px",
                 background: isMismatch
-                  ? "rgba(239, 68, 68, 0.08)"
+                  ? "#fef2f2"
                   : idx % 2 === 0
-                  ? "rgba(255, 255, 255, 0.02)"
-                  : "transparent",
+                  ? "#f8fafc"
+                  : "#ffffff",
                 border: isMismatch
-                  ? "1px solid rgba(239, 68, 68, 0.25)"
-                  : "1px solid rgba(255, 255, 255, 0.03)",
+                  ? "1px solid #fecaca"
+                  : "1px solid var(--border)",
                 transition: "all 0.2s ease",
               }}
             >
@@ -416,10 +417,8 @@ export default function ComparisonView({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: isMismatch
-                      ? "rgba(239, 68, 68, 0.2)"
-                      : "rgba(59, 130, 246, 0.15)",
-                    color: isMismatch ? "#ef4444" : "#60a5fa",
+                    background: isMismatch ? "#fee2e2" : "#eff6ff",
+                    color: isMismatch ? "#b91c1c" : "var(--gov-navy)",
                   }}
                 >
                   <Icon size={15} />
@@ -429,7 +428,7 @@ export default function ComparisonView({
                     style={{
                       fontSize: "0.85rem",
                       fontWeight: 600,
-                      color: "#f1f5f9",
+                      color: "var(--gov-navy-dark)",
                     }}
                   >
                     {item.label}
@@ -438,7 +437,7 @@ export default function ComparisonView({
                     <div
                       style={{
                         fontSize: "0.725rem",
-                        color: "#f87171",
+                        color: "#b91c1c",
                         marginTop: "2px",
                       }}
                     >
@@ -453,13 +452,13 @@ export default function ComparisonView({
                 {item.packValue ? (
                   <span
                     style={{
-                      fontFamily: "monospace",
+                      fontFamily: "var(--font-mono)",
                       fontSize: "0.825rem",
-                      color: "#e2e8f0",
-                      background: "rgba(0, 0, 0, 0.25)",
+                      color: "#0f172a",
+                      background: "#f1f5f9",
                       padding: "0.25rem 0.5rem",
-                      borderRadius: "6px",
-                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      borderRadius: "4px",
+                      border: "1px solid var(--border)",
                       wordBreak: "break-word",
                     }}
                   >
@@ -469,7 +468,7 @@ export default function ComparisonView({
                   <span
                     style={{
                       fontSize: "0.775rem",
-                      color: "#64748b",
+                      color: "var(--text-muted)",
                       fontStyle: "italic",
                     }}
                   >
@@ -483,17 +482,15 @@ export default function ComparisonView({
                 {item.webValue ? (
                   <span
                     style={{
-                      fontFamily: "monospace",
+                      fontFamily: "var(--font-mono)",
                       fontSize: "0.825rem",
-                      color: isMismatch ? "#fca5a5" : "#e2e8f0",
-                      background: isMismatch
-                        ? "rgba(239, 68, 68, 0.2)"
-                        : "rgba(0, 0, 0, 0.25)",
+                      color: isMismatch ? "#991b1b" : "#0f172a",
+                      background: isMismatch ? "#fee2e2" : "#f1f5f9",
                       padding: "0.25rem 0.5rem",
-                      borderRadius: "6px",
+                      borderRadius: "4px",
                       border: isMismatch
-                        ? "1px solid rgba(239, 68, 68, 0.3)"
-                        : "1px solid rgba(255, 255, 255, 0.08)",
+                        ? "1px solid #fecaca"
+                        : "1px solid var(--border)",
                       wordBreak: "break-word",
                     }}
                   >
@@ -503,7 +500,7 @@ export default function ComparisonView({
                   <span
                     style={{
                       fontSize: "0.775rem",
-                      color: "#64748b",
+                      color: "var(--text-muted)",
                       fontStyle: "italic",
                     }}
                   >
@@ -521,12 +518,12 @@ export default function ComparisonView({
                       alignItems: "center",
                       gap: "0.3rem",
                       fontSize: "0.75rem",
-                      fontWeight: 600,
-                      color: "#34d399",
-                      background: "rgba(16, 185, 129, 0.15)",
-                      border: "1px solid rgba(16, 185, 129, 0.3)",
+                      fontWeight: 700,
+                      color: "#15803d",
+                      background: "#f0fdf4",
+                      border: "1px solid #bbf7d0",
                       padding: "0.25rem 0.6rem",
-                      borderRadius: "20px",
+                      borderRadius: "4px",
                     }}
                   >
                     <CheckCircle2 size={13} />
@@ -541,12 +538,12 @@ export default function ComparisonView({
                       alignItems: "center",
                       gap: "0.3rem",
                       fontSize: "0.75rem",
-                      fontWeight: 600,
-                      color: "#f87171",
-                      background: "rgba(239, 68, 68, 0.18)",
-                      border: "1px solid rgba(239, 68, 68, 0.4)",
+                      fontWeight: 700,
+                      color: "#b91c1c",
+                      background: "#fef2f2",
+                      border: "1px solid #fecaca",
                       padding: "0.25rem 0.6rem",
-                      borderRadius: "20px",
+                      borderRadius: "4px",
                     }}
                   >
                     <XCircle size={13} />
@@ -561,12 +558,12 @@ export default function ComparisonView({
                       alignItems: "center",
                       gap: "0.3rem",
                       fontSize: "0.75rem",
-                      fontWeight: 500,
-                      color: "#fbbf24",
-                      background: "rgba(245, 158, 11, 0.12)",
-                      border: "1px solid rgba(245, 158, 11, 0.25)",
+                      fontWeight: 600,
+                      color: "#b45309",
+                      background: "#fffbeb",
+                      border: "1px solid #fde68a",
                       padding: "0.25rem 0.5rem",
-                      borderRadius: "20px",
+                      borderRadius: "4px",
                     }}
                   >
                     <AlertTriangle size={12} />
@@ -581,7 +578,7 @@ export default function ComparisonView({
                       alignItems: "center",
                       gap: "0.3rem",
                       fontSize: "0.75rem",
-                      color: "#64748b",
+                      color: "var(--text-muted)",
                       padding: "0.25rem 0.5rem",
                     }}
                   >
@@ -600,23 +597,23 @@ export default function ComparisonView({
         style={{
           marginTop: "1.25rem",
           paddingTop: "1rem",
-          borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+          borderTop: "1px solid var(--border)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
           fontSize: "0.8rem",
-          color: "#94a3b8",
+          color: "var(--text-secondary)",
         }}
       >
         <div>
           {totalIssues > 0 ? (
-            <span style={{ color: "#f87171", fontWeight: 600 }}>
+            <span style={{ color: "#b91c1c", fontWeight: 700 }}>
               ⚠️ {totalIssues} cross-modal discrepanc{totalIssues > 1 ? "ies" : "y"} flagged
               under Legal Metrology & E-Commerce Rules
             </span>
           ) : (
-            <span style={{ color: "#34d399", fontWeight: 500 }}>
+            <span style={{ color: "#15803d", fontWeight: 600 }}>
               ✓ All cross-checked declarations align between web listing and physical package
             </span>
           )}
