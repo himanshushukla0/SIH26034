@@ -13,10 +13,18 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
+
+_root = Path(__file__).resolve().parent.parent
+if str(_root) not in sys.path:
+    sys.path.insert(0, str(_root))
+
+import lmpc_vision as vision
+import lmpc_extraction as ex
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -262,88 +270,219 @@ async def health_check():
 # Audit Endpoints
 # ---------------------------------------------------------------------------
 
+def save_upload(file: UploadFile) -> str:
+    """
+    Save uploaded file permanently to backend/uploads and return its absolute path.
+    Guarantees that image_path is never NULL on database audit records.
+    """
+    upload_dir = Path("backend/uploads").resolve()
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = Path(file.filename or "packaging_image.jpg").name
+    unique_name = f"{uuid.uuid4().hex}_{safe_name}"
+    dest_path = upload_dir / unique_name
+
+    file.file.seek(0)
+    content = file.file.read()
+    dest_path.write_bytes(content)
+    file.file.seek(0)
+    logger.info("💾 Saved uploaded package image to %s (%d bytes)", dest_path, len(content))
+    return str(dest_path)
+
+
+async def call_gemini(path: str, prompt: str, schema: Optional[dict[str, Any]] = None) -> Any:
+    """
+    Call Gemini multimodal vision with the Vision Extraction Contract.
+    """
+    from google import genai
+    from google.genai import types as genai_types
+
+    client = genai.Client()
+    model_name = settings.GEMINI_MODEL
+
+    img_path = Path(path)
+    if not img_path.exists():
+        raise FileNotFoundError(f"Image not found on disk: {path}")
+
+    image_bytes = img_path.read_bytes()
+
+    mime_type = "image/jpeg"
+    if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        mime_type = "image/png"
+    elif image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+        mime_type = "image/webp"
+
+    image_part = genai_types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+
+    config_kwargs: dict[str, Any] = {
+        "temperature": 0.1,
+        "max_output_tokens": 4096,
+        "response_mime_type": "application/json",
+    }
+    if schema:
+        config_kwargs["response_schema"] = schema
+
+    config = genai_types.GenerateContentConfig(**config_kwargs)
+
+    try:
+        if hasattr(client, "aio") and hasattr(client.aio, "models"):
+            response = await client.aio.models.generate_content(
+                model=model_name,
+                contents=[prompt, image_part],
+                config=config,
+            )
+        else:
+            import asyncio
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=model_name,
+                contents=[prompt, image_part],
+                config=config,
+            )
+
+        return response.text.strip() if response.text else ""
+    except Exception as e:
+        logger.error("Gemini vision inference failed for %s: %s", path, e)
+        return {
+            "is_product_label": False,
+            "what_it_shows": f"Gemini inference failure: {e}",
+            "fields": {},
+        }
+
+
+async def persist_audit_from_extraction(
+    audit_res: dict[str, Any],
+    image_path: str,
+) -> str:
+    """Save an accepted extraction audit to the database, ensuring image_path is saved."""
+    audit_id = str(uuid.uuid4())
+    summary = audit_res.get("summary") or {}
+    checks = audit_res.get("checks") or []
+    barcode_text = audit_res.get("barcode_text")
+
+    def get_check_val(rule_id: str) -> Optional[str]:
+        for c in checks:
+            if c.get("rule_id") == rule_id and c.get("status") == "PASS":
+                return str(c.get("val"))
+        return None
+
+    p_name = get_check_val("GENERIC_NAME") or audit_res.get("what_it_shows") or "Pre-Packaged Commodity"
+    m_name = get_check_val("MANUFACTURER")
+    mrp_val = get_check_val("MRP")
+    net_qty_val = get_check_val("NET_QUANTITY")
+
+    # Pre-generate inspection notice HTML
+    try:
+        report_dict = {
+            "compliance_score": summary.get("score_percent") or 0.0,
+            "overall_status": summary.get("verdict") or "UNKNOWN",
+            "violations": [
+                {
+                    "rule_reference": c.get("clause", "Rule 6 - LM(PC) Rules, 2011"),
+                    "act_section": "Section 18(1) - Legal Metrology Act, 2009",
+                    "punishment_section": "Section 15(6) - Improvement Notice (Jan Vishwas Act, 2026)",
+                    "statutory_penalty": "First contravention: Statutory Improvement Notice under s.15(6)",
+                    "field_name": c.get("rule_id"),
+                    "severity": "critical" if c.get("rule_id") in ("MRP", "NET_QUANTITY") else "major",
+                    "description": c.get("val", ""),
+                    "expected_value": c.get("label", ""),
+                    "found_value": c.get("quoted_text"),
+                    "is_discrepancy": False,
+                }
+                for c in checks if c.get("status") != "PASS"
+            ],
+            "declaration_status": {
+                c.get("rule_id"): {
+                    "status": "FOUND" if c.get("status") == "PASS" else "MISSING",
+                    "value": c.get("val"),
+                }
+                for c in checks
+            },
+        }
+        html_report_path = report_generator.generate_html_report(
+            audit_id=audit_id,
+            verdict_data=report_dict,
+            extractions={c.get("rule_id"): c.get("val") for c in checks},
+        )
+    except Exception as e:
+        logger.warning("Could not pre-generate report file: %s", e)
+        html_report_path = None
+
+    async with async_session() as session:
+        audit = Audit(
+            id=audit_id,
+            input_type=AuditInputType.IMAGE,
+            image_path=image_path,
+            status=AuditStatus.COMPLETED,
+            compliance_score=summary.get("score_percent"),
+            overall_status=summary.get("verdict"),
+            total_checks=summary.get("total_checks", 10),
+            passed_checks=summary.get("passed", 0),
+            failed_checks=summary.get("failed", 0),
+            product_name=str(p_name) if p_name else None,
+            manufacturer=str(m_name) if m_name else None,
+            mrp=mrp_val,
+            net_quantity=net_qty_val,
+            barcode_number=barcode_text,
+            report_pdf_path=html_report_path,
+            raw_extractions_json=json.dumps(audit_res, default=str),
+        )
+        session.add(audit)
+
+        for c in checks:
+            if c.get("status") != "PASS":
+                sev = ViolationSeverity.CRITICAL if c.get("rule_id") in ("MRP", "NET_QUANTITY") else ViolationSeverity.MAJOR
+                violation = Violation(
+                    audit_id=audit_id,
+                    rule_reference=c.get("clause", "Rule 6 - LM(PC) Rules, 2011"),
+                    act_section="Section 18(1) - Legal Metrology Act, 2009",
+                    punishment_section="Section 15(6) - Improvement Notice (Jan Vishwas Act, 2026)",
+                    statutory_penalty="First contravention: Statutory Improvement Notice under s.15(6)",
+                    field_name=c.get("rule_id", "Declaration"),
+                    severity=sev,
+                    description=c.get("val", "Declaration missing or unverified"),
+                    expected_value=c.get("label"),
+                    found_value=c.get("quoted_text"),
+                    is_discrepancy=False,
+                )
+                session.add(violation)
+
+        await session.commit()
+        logger.info("Persisted audit record %s with real image_path=%s", audit_id, image_path)
+
+    return audit_id
+
+
 @app.post("/api/audit/image")
 async def audit_image(file: UploadFile = File(...)):
-    """
-    Audit a packaging image for LMPC compliance.
-    """
-    if file.content_type not in {
-        "image/jpeg", "image/png", "image/webp", "image/jpg"
-    }:
+    if file.content_type and not (
+        file.content_type.startswith("image/")
+        or file.content_type in {"image/jpeg", "image/png", "image/webp", "image/jpg"}
+    ):
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type: {file.content_type}. "
-                   f"Accepted: JPEG, PNG, WebP.",
+            detail=f"Unsupported file type: {file.content_type}. Accepted: JPEG, PNG, WebP.",
         )
 
-    image_bytes = await file.read()
+    path = save_upload(file)                       # and actually store it — image_path
+                                                   # is null on every row in your DB
+    gate = vision.prepare_audit_input(path)
+    if not gate["proceed"]:
+        return ex.build_audit(gate, ex.ExtractionResult(ex.REJECTED_NOT_LABEL, ""))
 
-    if len(image_bytes) == 0:
-        raise HTTPException(status_code=400, detail="Empty file uploaded.")
+    raw = await call_gemini(path, ex.EXTRACTION_PROMPT, ex.RESPONSE_SCHEMA)
+    audit_res = ex.build_audit(gate, ex.validate_extraction(raw),
+                              barcode_text=gate["barcode"].get("barcode"))
 
-    if len(image_bytes) > 20 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large. Max 20 MB.")
+    if audit_res.get("audit_recorded"):
+        try:
+            audit_id = await persist_audit_from_extraction(audit_res, image_path=path)
+            audit_res["audit_id"] = audit_id
+            audit_res["report_url"] = f"/api/report/html/{audit_id}"
+            audit_res["image_path"] = path
+        except Exception as e:
+            logger.warning("Could not persist audit record: %s", e)
 
-    logger.info("📸 Image audit request: %s (%d bytes)", file.filename, len(image_bytes))
-
-    # --- Image Gate Enforcement (SIH26034) ---
-    # An image must EARN the right to be audited. If it does not plausibly show
-    # product packaging (e.g. selfie, featureless wall, blurry photo), it is refused.
-    temp_upload_dir = Path("backend/uploads")
-    temp_upload_dir.mkdir(parents=True, exist_ok=True)
-    temp_file = temp_upload_dir / f"gate_{uuid.uuid4().hex}_{Path(file.filename or 'img.jpg').name}"
-    temp_file.write_bytes(image_bytes)
-
-    try:
-        from backend.image_gate import prepare_audit_input
-        gate_result = prepare_audit_input(str(temp_file))
-
-        if not gate_result["proceed"]:
-            logger.warning(
-                "🛑 Image audit refused by Image Gate: %s (status: %s)",
-                gate_result["user_message"],
-                gate_result["image"]["status"],
-            )
-            return JSONResponse(
-                status_code=422,
-                content={
-                    "status": "REFUSED",
-                    "audit_status": "REFUSED",
-                    "error": gate_result["user_message"],
-                    "detail": gate_result["user_message"],
-                    "reason": gate_result["user_message"],
-                    "guidance": gate_result["guidance"],
-                    "image_assessment": gate_result["image"],
-                },
-            )
-    finally:
-        if temp_file.exists():
-            try:
-                temp_file.unlink()
-            except Exception:
-                pass
-
-    try:
-        result = await run_image_audit(image_bytes=image_bytes)
-
-        if result.get("error"):
-            raise HTTPException(status_code=500, detail=result["error"])
-
-        # Persist audit record and generate report
-        audit_id = await persist_audit_result(
-            result=result,
-            input_type="image",
-        )
-        result["audit_id"] = audit_id
-        result["report_url"] = f"/api/report/html/{audit_id}"
-
-        return JSONResponse(content=result)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Image audit failed")
-        raise HTTPException(status_code=500, detail=str(e))
+    return audit_res
 
 
 @app.post("/api/audit/url")

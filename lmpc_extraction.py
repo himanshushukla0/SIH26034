@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
  LMPC COMPLIANCE ENGINE (SIH26034) — VISION EXTRACTION CONTRACT
 
@@ -274,23 +274,60 @@ def build_audit(image_gate: Dict[str, Any], extraction: ExtractionResult,
     What your FastAPI endpoint should return. It cannot produce a COMPLIANT verdict
     unless every field was read from the image, quoted, and above the confidence floor.
     """
+    img_info = image_gate.get("image")
+    img_path = image_gate.get("image_path")
+
     if not image_gate.get("proceed"):
-        return {"audit_recorded": False, "verdict": None,
-                "reason": image_gate.get("user_message"),
-                "guidance": image_gate.get("guidance"),
-                "image": image_gate.get("image"), "checks": [], "summary": None}
+        return {
+            "status": "REFUSED",
+            "audit_status": "REFUSED",
+            "audit_recorded": False,
+            "verdict": None,
+            "reason": image_gate.get("user_message"),
+            "error": image_gate.get("user_message"),
+            "detail": image_gate.get("user_message"),
+            "guidance": image_gate.get("guidance"),
+            "image": img_info,
+            "image_assessment": img_info,
+            "image_path": img_path,
+            "checks": [],
+            "summary": None,
+        }
 
     if not extraction.accepted:
-        return {"audit_recorded": False, "verdict": None, "reason": extraction.message,
-                "guidance": "Retake the photograph of the declaration panel and try again.",
-                "image": image_gate.get("image"), "barcode": image_gate.get("barcode"),
-                "what_it_shows": extraction.what_it_shows, "checks": [], "summary": None}
+        return {
+            "status": "REFUSED",
+            "audit_status": "REFUSED",
+            "audit_recorded": False,
+            "verdict": None,
+            "reason": extraction.message,
+            "error": extraction.message,
+            "detail": extraction.message,
+            "guidance": "Retake the photograph of the declaration panel and try again.",
+            "image": img_info,
+            "image_assessment": img_info,
+            "image_path": img_path,
+            "barcode": image_gate.get("barcode"),
+            "what_it_shows": extraction.what_it_shows,
+            "checks": [],
+            "summary": None,
+        }
 
     summary = compliance_summary(extraction.checks)
-    return {"audit_recorded": True, "verdict": summary["verdict"],
-            "reason": extraction.message, "image": image_gate.get("image"),
-            "barcode": image_gate.get("barcode"), "barcode_text": barcode_text,
-            "what_it_shows": extraction.what_it_shows,
-            "mean_confidence": extraction.mean_confidence,
-            "downgraded_fields": extraction.downgraded,
-            "checks": extraction.checks, "summary": summary}
+    return {
+        "status": "COMPLETED",
+        "audit_status": "COMPLETED",
+        "audit_recorded": True,
+        "verdict": summary["verdict"],
+        "reason": extraction.message,
+        "image": img_info,
+        "image_assessment": img_info,
+        "image_path": img_path,
+        "barcode": image_gate.get("barcode"),
+        "barcode_text": barcode_text,
+        "what_it_shows": extraction.what_it_shows,
+        "mean_confidence": extraction.mean_confidence,
+        "downgraded_fields": extraction.downgraded,
+        "checks": extraction.checks,
+        "summary": summary,
+    }

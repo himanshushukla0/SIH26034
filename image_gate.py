@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
  LMPC COMPLIANCE ENGINE (SIH26034) — IMAGE GATE & BARCODE DECODER
 
@@ -425,10 +425,11 @@ def prepare_audit_input(image_path: str) -> Dict[str, Any]:
     if not assessment.usable:
         return {"proceed": False, "image": assessment.as_dict(), "barcode": None,
                 "audit_status": "REFUSED", "user_message": assessment.reason,
-                "guidance": assessment.guidance}
+                "guidance": assessment.guidance, "image_path": str(image_path)}
 
     bc = barcode_status(image_path)
     return {"proceed": True, "image": assessment.as_dict(), "barcode": bc,
             "audit_status": "READY", "user_message": bc["message"],
             "guidance": bc.get("guidance", "") or assessment.guidance,
-            "base_confidence": round(max(0.0, 1.0 - bc["confidence_penalty"]), 2)}
+            "base_confidence": round(max(0.0, 1.0 - bc["confidence_penalty"]), 2),
+            "image_path": str(image_path)}
