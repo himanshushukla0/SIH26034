@@ -592,3 +592,93 @@ body {
   .gov-footer-top { grid-template-columns: 1fr; gap: 20px; }
   .gov-footer-bottom { flex-direction: column; gap: 8px; }
 }
+
+/* ================= LIVE SCANNER RETICLE & HUD STYLES ================= */
+#lmpc-barcode-scanner {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+#lmpc-barcode-scanner video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+#lmpc-barcode-scanner canvas {
+  display: none !important;
+}
+
+.hud-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
+  border-style: solid;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.hud-corner-tl {
+  top: 16px;
+  left: 16px;
+  border-right: none;
+  border-bottom: none;
+  border-top-left-radius: 6px;
+}
+
+.hud-corner-tr {
+  top: 16px;
+  right: 16px;
+  border-left: none;
+  border-bottom: none;
+  border-top-right-radius: 6px;
+}
+
+.hud-corner-bl {
+  bottom: 16px;
+  left: 16px;
+  border-right: none;
+  border-top: none;
+  border-bottom-left-radius: 6px;
+}
+
+.hud-corner-br {
+  bottom: 16px;
+  right: 16px;
+  border-left: none;
+  border-top: none;
+  border-bottom-right-radius: 6px;
+}
+
+@keyframes laserSweep {
+  0% {
+    top: 10%;
+    opacity: 0.8;
+  }
+  50% {
+    top: 90%;
+    opacity: 1;
+  }
+  100% {
+    top: 10%;
+    opacity: 0.8;
+  }
+}
+
+.scan-laser-line {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #38bdf8 20%, #38bdf8 80%, transparent 100%);
+  box-shadow: 0 0 15px #38bdf8, 0 0 25px #0284c7;
+  animation: laserSweep 2.2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 14;
+}
+

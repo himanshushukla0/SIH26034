@@ -59,6 +59,10 @@ export interface TranslationDictionary {
   activate_camera: string;
   scan_another: string;
   deactivate_camera: string;
+  capture_frame_btn: string;
+  upload_scan_image: string;
+  switch_camera: string;
+  scanning_active_hud: string;
   manual_search_title: string;
   manual_search_sub: string;
   manual_placeholder: string;
@@ -151,6 +155,10 @@ export const translations: Record<Language, TranslationDictionary> = {
     activate_camera: "Activate Inspection Camera",
     scan_another: "Scan Another Package",
     deactivate_camera: "Deactivate Camera",
+    capture_frame_btn: "Capture Frame & Audit Label",
+    upload_scan_image: "Or Upload Barcode / Packaging Photo",
+    switch_camera: "Switch Camera",
+    scanning_active_hud: "Optical Barcode Detection Active",
     manual_search_title: "🔍 Manual Code or License Verification",
     manual_search_sub: "GTIN-13 / EAN / FSSAI (14-digit)",
     manual_placeholder: "Enter Barcode or 14-digit FSSAI number (e.g. 8901030383478)...",
@@ -243,6 +251,10 @@ export const translations: Record<Language, TranslationDictionary> = {
     activate_camera: "निरीक्षण कैमरा सक्रिय करें",
     scan_another: "अन्य पैकेज स्कैन करें",
     deactivate_camera: "कैमरा बंद करें",
+    capture_frame_btn: "फ्रेम कैप्चर करें एवं लेबल जांचें",
+    upload_scan_image: "अथवा बारकोड / पैकेजिंग फोटो अपलोड करें",
+    switch_camera: "कैमरा बदलें",
+    scanning_active_hud: "ऑप्टिकल बारकोड पहचान सक्रिय",
     manual_search_title: "🔍 मैनुअल कोड अथवा लाइसेंस सत्यापन",
     manual_search_sub: "GTIN-13 / EAN / FSSAI (14-अंकीय)",
     manual_placeholder: "बारकोड या 14-अंकीय FSSAI नंबर दर्ज करें (उदा. 8901030383478)...",
