@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   CheckCircle,
@@ -7,8 +8,17 @@ import {
   AlertTriangle,
   BarChart3,
   Printer,
+  Copy,
+  Download,
+  Scale,
+  X,
 } from "lucide-react";
-import type { AuditVerdict, PackagingExtractions } from "../api";
+import {
+  draftStatutoryNotice,
+  type AuditVerdict,
+  type PackagingExtractions,
+  type StatutoryNoticeResult,
+} from "../api";
 import ComplianceGauge from "./ComplianceGauge";
 import ViolationCard from "./ViolationCard";
 import ComparisonView from "./ComparisonView";
@@ -70,6 +80,12 @@ export default function AuditReport({
   sourceUrl,
 }: AuditReportProps) {
   const { lang, t } = useLanguage();
+  const [showNoticeModal, setShowNoticeModal] = useState(false);
+  const [offenceNumber, setOffenceNumber] = useState(1);
+  const [noticeResult, setNoticeResult] = useState<StatutoryNoticeResult | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [isDrafting, setIsDrafting] = useState(false);
+
   const criticalCount = verdict.violations.filter(
     (v) => v.severity === "critical"
   ).length;
@@ -80,8 +96,94 @@ export default function AuditReport({
     (v) => v.severity === "minor"
   ).length;
 
+  const ruleMap: Record<string, string> = {
+    manufacturer_name: "MANUFACTURER",
+    manufacturer_address: "MANUFACTURER",
+    country_of_origin: "COUNTRY_OF_ORIGIN",
+    generic_name: "COMMODITY_NAME",
+    net_quantity: "NET_QUANTITY",
+    net_quantity_unit: "NET_QUANTITY",
+    manufacture_date: "MFG_DATE",
+    expiry_date: "EXPIRY_DATE",
+    mrp: "MRP",
+    unit_sale_price: "UNIT_SALE_PRICE",
+    consumer_care: "CONSUMER_CARE",
+    pdp_font_size: "PDP_AREA_FONT",
+  };
+
+  useEffect(() => {
+    if (showNoticeModal) {
+      setIsDrafting(true);
+      const failures = verdict.violations.map((v) => ({
+        rule_id: ruleMap[v.field_name] || "MANUFACTURER",
+        found: v.found_value || v.description || "-",
+        detail: v.description,
+      }));
+
+      const prodName =
+        typeof extractions?.product_name?.value === "string"
+          ? extractions.product_name.value
+          : typeof extractions?.product_name === "string"
+          ? extractions.product_name
+          : undefined;
+      const mfgName =
+        typeof extractions?.manufacturer_name?.value === "string"
+          ? extractions.manufacturer_name.value
+          : typeof extractions?.manufacturer_name === "string"
+          ? extractions.manufacturer_name
+          : undefined;
+      const bcode =
+        typeof extractions?.barcode_number?.value === "string"
+          ? extractions.barcode_number.value
+          : typeof extractions?.barcode_number === "string"
+          ? extractions.barcode_number
+          : undefined;
+
+      draftStatutoryNotice({
+        item: {
+          name: prodName || (listingData?.title as string) || "Pre-Packaged Commodity",
+          manufacturer: mfgName || (listingData?.brand as string) || "Responsible Packer / Importer",
+          barcode: bcode || "-",
+          data_source: sourceUrl || "Vision OCR & Multimodal Compliance Engine (SIH26034)",
+          checks: verdict.violations.map((v) => v.description),
+        },
+        failures,
+        offence_number: offenceNumber,
+        officer_name: "Inspector of Legal Metrology, Enforcement Division",
+      })
+        .then((res) => {
+          setNoticeResult(res);
+          setIsDrafting(false);
+        })
+        .catch((err) => {
+          console.error(err);
+          setIsDrafting(false);
+        });
+    }
+  }, [showNoticeModal, offenceNumber, verdict, extractions, listingData, sourceUrl]);
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleCopyNotice = () => {
+    if (noticeResult?.text) {
+      navigator.clipboard.writeText(noticeResult.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleDownloadNotice = () => {
+    if (noticeResult?.text) {
+      const blob = new Blob([noticeResult.text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `LMPC_Statutory_Notice_${offenceNumber === 1 ? "Improvement_s15" : "ShowCause_s36"}.txt`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (
@@ -118,22 +220,43 @@ export default function AuditReport({
             {t("statutory_enforcement_sub")}
           </div>
         </div>
-        <button
-          onClick={handlePrint}
-          className="btn btn-outline"
-          style={{
-            padding: "6px 14px",
-            fontSize: "0.8rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            background: "#ffffff",
-            color: "var(--gov-navy)",
-            borderColor: "var(--gov-navy)",
-          }}
-        >
-          <Printer size={14} /> {t("print_notice_btn")}
-        </button>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          {verdict.violations.length > 0 && (
+            <button
+              onClick={() => setShowNoticeModal(true)}
+              className="btn btn-primary"
+              style={{
+                padding: "6px 14px",
+                fontSize: "0.8rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                background: "var(--gov-navy)",
+                color: "#ffffff",
+                borderColor: "var(--gov-navy)",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+              }}
+            >
+              <Scale size={14} /> Draft Notice (s.15(6))
+            </button>
+          )}
+          <button
+            onClick={handlePrint}
+            className="btn btn-outline"
+            style={{
+              padding: "6px 14px",
+              fontSize: "0.8rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              background: "#ffffff",
+              color: "var(--gov-navy)",
+              borderColor: "var(--gov-navy)",
+            }}
+          >
+            <Printer size={14} /> {t("print_notice_btn")}
+          </button>
+        </div>
       </div>
 
       {/* --- Section 15 Manual Inspection Alert (if NEEDS_MANUAL_REVIEW) --- */}
@@ -429,6 +552,243 @@ export default function AuditReport({
           sourceUrl={sourceUrl}
           violations={verdict.violations}
         />
+      )}
+
+      {/* --- Statutory Notice Modal (Jan Vishwas Act, 2026 s.15(6)) --- */}
+      {showNoticeModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => setShowNoticeModal(false)}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              color: "#0f172a",
+              borderRadius: "12px",
+              width: "100%",
+              maxWidth: "880px",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              border: "1px solid #cbd5e1",
+              overflow: "hidden",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: "16px 20px",
+                borderBottom: "1px solid #e2e8f0",
+                background: "#f8fafc",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <Scale size={22} style={{ color: "var(--gov-navy)" }} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "var(--gov-navy)" }}>
+                    Statutory Notice Drafting Engine
+                  </h3>
+                  <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                    Jan Vishwas (Amendment of Provisions) Act, 2026 • Legal Metrology Act, 2009
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowNoticeModal(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#64748b",
+                  padding: "4px",
+                  borderRadius: "6px",
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Offence & Instrument Selector Toolbar */}
+            <div
+              style={{
+                padding: "12px 20px",
+                background: "#eff6ff",
+                borderBottom: "1px solid #bfdbfe",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "12px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e3a8a" }}>
+                  Enforcement Level:
+                </span>
+                <div style={{ display: "flex", borderRadius: "6px", overflow: "hidden", border: "1px solid #93c5fd" }}>
+                  <button
+                    onClick={() => setOffenceNumber(1)}
+                    style={{
+                      padding: "5px 12px",
+                      fontSize: "0.8rem",
+                      fontWeight: offenceNumber === 1 ? 700 : 500,
+                      background: offenceNumber === 1 ? "#1d4ed8" : "#ffffff",
+                      color: offenceNumber === 1 ? "#ffffff" : "#1e3a8a",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    1st Contravention (s.15(6) Improvement Notice)
+                  </button>
+                  <button
+                    onClick={() => setOffenceNumber(2)}
+                    style={{
+                      padding: "5px 12px",
+                      fontSize: "0.8rem",
+                      fontWeight: offenceNumber >= 2 ? 700 : 500,
+                      background: offenceNumber >= 2 ? "#b91c1c" : "#ffffff",
+                      color: offenceNumber >= 2 ? "#ffffff" : "#991b1b",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Repeat Contravention (Show Cause Notice)
+                  </button>
+                </div>
+              </div>
+
+              {noticeResult && (
+                <span
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: "9999px",
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                    background: noticeResult.instrument === "IMPROVEMENT_NOTICE" ? "#dbeafe" : "#fee2e2",
+                    color: noticeResult.instrument === "IMPROVEMENT_NOTICE" ? "#1e40af" : "#991b1b",
+                    border: `1px solid ${noticeResult.instrument === "IMPROVEMENT_NOTICE" ? "#93c5fd" : "#fca5a5"}`,
+                  }}
+                >
+                  {noticeResult.instrument === "IMPROVEMENT_NOTICE" ? "⚖️ STATUTORY IMPROVEMENT NOTICE" : "⚠️ SHOW CAUSE NOTICE"}
+                </span>
+              )}
+            </div>
+
+            {/* Legal Rationale Callout */}
+            {noticeResult?.reason && (
+              <div
+                style={{
+                  margin: "12px 20px 0 20px",
+                  padding: "10px 14px",
+                  background: "#f8fafc",
+                  borderLeft: "4px solid #3b82f6",
+                  borderRadius: "4px",
+                  fontSize: "0.8rem",
+                  color: "#334155",
+                  lineHeight: 1.4,
+                }}
+              >
+                <strong>Legal Rationale:</strong> {noticeResult.reason}
+              </div>
+            )}
+
+            {/* Notice Body Text Box */}
+            <div style={{ padding: "12px 20px", flex: 1, overflowY: "auto" }}>
+              {isDrafting ? (
+                <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
+                  Drafting statutory notice from LMPC rule table...
+                </div>
+              ) : (
+                <pre
+                  style={{
+                    background: "#0f172a",
+                    color: "#f8fafc",
+                    padding: "16px",
+                    borderRadius: "8px",
+                    fontFamily: "'JetBrains Mono', 'Consolas', monospace",
+                    fontSize: "0.78rem",
+                    lineHeight: 1.45,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    maxHeight: "420px",
+                    overflowY: "auto",
+                    margin: 0,
+                    border: "1px solid #334155",
+                  }}
+                >
+                  {noticeResult?.text || "No notice generated."}
+                </pre>
+              )}
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div
+              style={{
+                padding: "12px 20px",
+                borderTop: "1px solid #e2e8f0",
+                background: "#f8fafc",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
+                Decision-support draft under s.15(6). Must be signed by an authorized Inspector before service.
+              </span>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  onClick={handleCopyNotice}
+                  className="btn btn-outline"
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: "0.8rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    background: "#ffffff",
+                    color: "#0f172a",
+                  }}
+                >
+                  <Copy size={14} /> {copied ? "Copied!" : "Copy Text"}
+                </button>
+                <button
+                  onClick={handleDownloadNotice}
+                  className="btn btn-primary"
+                  style={{
+                    padding: "6px 14px",
+                    fontSize: "0.8rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    background: "var(--gov-navy)",
+                    color: "#ffffff",
+                  }}
+                >
+                  <Download size={14} /> Download (.TXT)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </motion.div>
   );

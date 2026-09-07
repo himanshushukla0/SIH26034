@@ -21,6 +21,7 @@ from typing import Any, Optional
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from pydantic import BaseModel
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -531,6 +532,118 @@ async def get_html_report(audit_id: str, db: AsyncSession = Depends(get_db)):
         source_url=audit.source_url,
     )
     return FileResponse(html_path, media_type="text/html")
+
+
+# ---------------------------------------------------------------------------
+# Statutory Notice Drafting Engine (Jan Vishwas Act, 2026 / s.15(6))
+# ---------------------------------------------------------------------------
+
+class NoticeDraftRequest(BaseModel):
+    item: dict[str, Any]
+    failures: list[dict[str, Any]]
+    officer_name: str = "Inspector of Legal Metrology, Enforcement Division"
+    ref: str = ""
+    offence_number: int = 1
+    compliance_days: int = 30
+
+
+@app.post("/api/notice/draft")
+async def post_draft_notice(req: NoticeDraftRequest):
+    """Draft statutory Improvement Notice (s.15(6)) or Show Cause Notice based on violations."""
+    try:
+        from backend.lmpc_notice import draft_notice
+    except ImportError:
+        import lmpc_notice
+        draft_notice = lmpc_notice.draft_notice
+
+    res = draft_notice(
+        item=req.item,
+        failures=req.failures,
+        officer_name=req.officer_name,
+        ref=req.ref,
+        offence_number=req.offence_number,
+    )
+    return res
+
+
+@app.get("/api/report/notice/{audit_id}")
+async def get_audit_notice(
+    audit_id: str,
+    offence_number: int = 1,
+    officer_name: str = "Inspector of Legal Metrology, Enforcement Division",
+    db: AsyncSession = Depends(get_db),
+):
+    """Retrieve official drafted statutory notice for a given audit record."""
+    stmt = select(Audit).options(selectinload(Audit.violations)).where(Audit.id == audit_id)
+    res = await db.execute(stmt)
+    audit = res.scalar_one_or_none()
+
+    if not audit:
+        raise HTTPException(status_code=404, detail="Audit record not found.")
+
+    extractions = json.loads(audit.raw_extractions_json) if audit.raw_extractions_json else {}
+
+    rule_map = {
+        "manufacturer_name": "MANUFACTURER",
+        "manufacturer_address": "MANUFACTURER",
+        "country_of_origin": "COUNTRY_OF_ORIGIN",
+        "generic_name": "COMMODITY_NAME",
+        "net_quantity": "NET_QUANTITY",
+        "net_quantity_unit": "NET_QUANTITY",
+        "manufacture_date": "MFG_DATE",
+        "expiry_date": "EXPIRY_DATE",
+        "mrp": "MRP",
+        "unit_sale_price": "UNIT_SALE_PRICE",
+        "consumer_care": "CONSUMER_CARE",
+        "pdp_font_size": "PDP_AREA_FONT",
+    }
+
+    failures = []
+    for v in audit.violations:
+        rid = rule_map.get(v.field_name, "MANUFACTURER")
+        failures.append({
+            "rule_id": rid,
+            "found": v.found_value or v.description or "-",
+            "detail": v.description,
+        })
+
+    p_name = extractions.get("product_name")
+    if isinstance(p_name, dict):
+        p_name = p_name.get("value")
+    m_name = extractions.get("manufacturer_name")
+    if isinstance(m_name, dict):
+        m_name = m_name.get("value")
+    b_code = extractions.get("barcode_number")
+    if isinstance(b_code, dict):
+        b_code = b_code.get("value")
+
+    item = {
+        "name": p_name or "Pre-Packaged Commodity",
+        "manufacturer": m_name or "Unspecified Entity",
+        "barcode": b_code or "-",
+        "data_source": audit.source_url or f"Direct Inspection (Audit ID {audit.id[:8]})",
+        "checks": [v.description for v in audit.violations],
+    }
+
+    try:
+        from backend.lmpc_notice import draft_notice
+    except ImportError:
+        import lmpc_notice
+        draft_notice = lmpc_notice.draft_notice
+
+    ref_id = f"LMPC/HQ/2026/{audit.id[:8].upper()}"
+    notice_res = draft_notice(
+        item=item,
+        failures=failures,
+        officer_name=officer_name,
+        ref=ref_id,
+        offence_number=offence_number,
+    )
+    return {
+        "audit_id": audit.id,
+        "ref": ref_id,
+        **notice_res,
+    }
 
 
 @app.get("/api/audits")
