@@ -19,6 +19,7 @@ from rule_table import (
     IMPROVEMENT_NOTICE,
     BY_ID,
 )
+import lmpc_notice
 
 # Enable UTF-8 and ANSI colors in Windows PowerShell
 if hasattr(sys.stdout, 'reconfigure'):
@@ -89,78 +90,33 @@ def print_statutory_table(commodity_name, barcode, fssai, checks, overall_status
         print(f"     {BOLD}{RED}Actionable under Section 36 of the Legal Metrology Act, 2009 (Section 15(6) Improvement Notice / Civil Penalty){RESET}")
 
 def generate_statutory_notice(commodity_name, manufacturer, violations, offence_number=1):
-    notice_id = f"LMPC/HQ/2026/{int(time.time()) % 100000}"
-    dt = datetime.datetime.now().strftime("%d-%B-%Y")
+    ref_id = f"LMPC/HQ/2026/{int(time.time()) % 100000}"
+    dt = datetime.datetime.now().strftime("%d-%B-%Y %H:%M")
     
-    rule_ids = [v.get("rule_id", "MANUFACTURER") for v in violations]
-    n_kind = notice_kind_for(rule_ids, offence_number)
+    item = {
+        "name": commodity_name,
+        "manufacturer": manufacturer,
+        "barcode": "8901030383478" if "Tata" in commodity_name else ("8909999999999" if "Masala" in commodity_name else "7613035678901"),
+        "data_source": "Legal Metrology Multi-Agent Field Inspection Cockpit (SIH26034)",
+        "checks": violations,
+    }
+    failures = [
+        {"rule_id": v.get("rule_id", "MANUFACTURER"), "found": v.get("val", "-")}
+        for v in violations
+    ]
     
-    if n_kind == IMPROVEMENT_NOTICE:
-        print(f"\n{BOLD}{SAFFRON}╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗{RESET}")
-        print(f"{BOLD}{SAFFRON}║                STATUTORY IMPROVEMENT NOTICE UNDER SECTION 15(6) (JAN VISHWAS ACT, 2026)                ║{RESET}")
-        print(f"{BOLD}{SAFFRON}╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝{RESET}")
-        print(f"""
-{BOLD}OFFICE OF THE CONTROLLER OF LEGAL METROLOGY{RESET}
-DEPARTMENT OF CONSUMER AFFAIRS, GOVERNMENT OF INDIA
-Notice Reference No: {BOLD}{notice_id}{RESET}                                           Date: {dt}
-
-To,
-M/s {manufacturer or 'Responsible Manufacturer / Packer / Importer'}
-
-{BOLD}SUBJECT: IMPROVEMENT NOTICE UNDER SECTION 15(6) FOR CONTRAVENTION OF SECTION 18(1)
-         READ WITH RULE 6 OF THE LEGAL METROLOGY (PACKAGED COMMODITIES) RULES, 2011.{RESET}
-
-WHEREAS, an official inspection was executed on commodity: {BOLD}{commodity_name}{RESET};
-AND WHEREAS, the following statutory contraventions have been verified on the Principal Display Panel:
-""")
-        for i, v in enumerate(violations, 1):
-            rid = v.get("rule_id")
-            remedy_text = rule(rid).remedy if rid in BY_ID else "Rectify the defect on the principal display panel."
-            print(f"  {RED}{BOLD}[{i}] Contravention of {v['clause']}:{RESET} {v['label']} — Detected: '{v['val']}'")
-            print(f"      {CYAN}Specified Remedial Measure (s.15(6)):{RESET} {remedy_text}")
-        
-        print(f"""
-NOW, THEREFORE, pursuant to Section 15(6) of the Legal Metrology Act, 2009 (as amended by the Jan Vishwas
-(Amendment of Provisions) Act, 2026), you are hereby served with this {BOLD}IMPROVEMENT NOTICE{RESET} to rectify the
-aforesaid contraventions and take the specified measures within {BOLD}30 DAYS{RESET} of receipt of this notice.
-
-{BOLD}STATUTORY REGIME (JAN VISHWAS ACT, 2026):{RESET}
-  • First contravention: {LADDER_36_1.first.describe()}
-  • Failure to comply with this notice within 30 days shall render you liable to civil penalty proceedings
-    under Section 36(1) ({LADDER_36_1.second.describe()}).
-
-Issued under the Seal and Authority of the Legal Metrology Enforcement Cell.
-{DIM}Inspector of Legal Metrology, Enforcement Cell, New Delhi.{RESET}
-""")
-    else:
-        print(f"\n{BOLD}{SAFFRON}╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗{RESET}")
-        print(f"{BOLD}{SAFFRON}║                     FORM OF STATUTORY SHOW CAUSE NOTICE UNDER SECTION 36 / 49                     ║{RESET}")
-        print(f"{BOLD}{SAFFRON}╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝{RESET}")
-        print(f"""
-{BOLD}OFFICE OF THE CONTROLLER OF LEGAL METROLOGY{RESET}
-DEPARTMENT OF CONSUMER AFFAIRS, GOVERNMENT OF INDIA
-Notice Reference No: {BOLD}{notice_id}{RESET}                                           Date: {dt}
-
-To,
-M/s {manufacturer or 'Responsible Manufacturer / Packer / Importer'}
-
-{BOLD}SUBJECT: NOTICE FOR CONTRAVENTION OF THE LEGAL METROLOGY ACT, 2009 AND RULE 6 OF 
-         THE LEGAL METROLOGY (PACKAGED COMMODITIES) RULES, 2011.{RESET}
-
-WHEREAS, an official inspection was executed on commodity: {BOLD}{commodity_name}{RESET};
-AND WHEREAS, the following statutory contraventions have been verified on the Principal Display Panel:
-""")
-        for i, v in enumerate(violations, 1):
-            print(f"  {RED}{BOLD}[{i}] Contravention of {v['clause']}:{RESET} {v['label']} — Detected: '{v['val']}'")
-        
-        print(f"""
-NOW, THEREFORE, take notice that you are hereby called upon to show cause within {BOLD}15 DAYS{RESET} of receipt of 
-this notice as to why penal proceedings under {BOLD}Section 36 / Section 49{RESET} of the Legal Metrology Act, 2009 
-should not be instituted against you before the Competent Adjudicating Authority / Magistrate.
-
-Issued under the Seal and Authority of the Legal Metrology Enforcement Cell.
-{DIM}Inspector of Legal Metrology, Enforcement Cell, New Delhi.{RESET}
-""")
+    notice_res = lmpc_notice.draft_notice(
+        item=item,
+        failures=failures,
+        officer_name="Inspector of Legal Metrology, Enforcement Division",
+        ref=ref_id,
+        prepared_on=dt,
+        offence_number=offence_number,
+    )
+    
+    print(f"\n{BOLD}{CYAN}⚖️  STATUTORY INSTRUMENT SELECTION: {notice_res['instrument']}{RESET}")
+    print(f"{DIM}Determination Rationale: {notice_res['reason']}{RESET}\n")
+    print(notice_res["text"])
 
 # Reference Dataset — All citations and subjects derived from rule_table
 DEMO_ITEMS = {

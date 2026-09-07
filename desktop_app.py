@@ -23,6 +23,7 @@ from rule_table import (
     LADDER_36_1,
     BY_ID,
 )
+import lmpc_notice
 
 def find_rule_for_clause(clause_str):
     for r in BY_ID.values():
@@ -466,90 +467,56 @@ class LmpcDesktopApp:
                 return
             item = self.current_inspected_item
             failing_checks = [c for c in item['checks'] if c[3] == 'FAIL']
-            rule_ids = [find_rule_for_clause(c[0]).id for c in failing_checks]
-            n_kind = notice_kind_for(rule_ids, 1)
+            if not failing_checks:
+                messagebox.showinfo("Compliant", "No violations found on this commodity.")
+                return
 
-            if n_kind == IMPROVEMENT_NOTICE:
-                notice_text = f"""================================================================================
-           GOVERNMENT OF INDIA • DEPARTMENT OF CONSUMER AFFAIRS
-           STATUTORY IMPROVEMENT NOTICE UNDER SECTION 15(6)
-       (LEGAL METROLOGY ACT, 2009 AS AMENDED BY JAN VISHWAS ACT, 2026)
-================================================================================
-Notice Reference: LMPC/HQ/2026/{int(time.time()) % 100000}
-Date: {datetime.datetime.now().strftime('%d-%B-%Y')}
+            failures = [
+                {"rule_id": find_rule_for_clause(c[0]).id, "found": c[2]}
+                for c in failing_checks
+            ]
+            notice_item = {
+                "name": item.get("name", "Pre-Packaged Commodity"),
+                "manufacturer": item.get("manufacturer", "Unknown Manufacturer"),
+                "barcode": item.get("barcode", "-"),
+                "data_source": "Native Desktop Inspector & GS1 Verification (SIH26034)",
+                "checks": item.get("checks", []),
+            }
 
-To,
-M/s {item['manufacturer']}
+            res = lmpc_notice.draft_notice(
+                item=notice_item,
+                failures=failures,
+                officer_name="Inspector of Legal Metrology, Enforcement Division",
+                ref=f"LMPC/HQ/2026/{int(time.time()) % 100000}",
+                offence_number=1,
+            )
 
-SUBJECT: IMPROVEMENT NOTICE UNDER SECTION 15(6) FOR CONTRAVENTION OF SECTION 18(1)
-         READ WITH RULE 6 OF THE LEGAL METROLOGY (PACKAGED COMMODITIES) RULES, 2011.
-
-WHEREAS, an official inspection was executed on commodity: '{item['name']}';
-Barcode / GTIN: {item['barcode']}
-
-AND WHEREAS, the following statutory contraventions have been verified on the label:
-
-"""
-                for c, d, v, s in failing_checks:
-                    r_obj = find_rule_for_clause(c)
-                    notice_text += f"  • {c}: {d} — Detected: '{v}'\n"
-                    notice_text += f"    Specified Remedial Measure (s.15(6)): {r_obj.remedy}\n\n"
-
-                notice_text += f"""NOW, THEREFORE, pursuant to Section 15(6) of the Legal Metrology Act, 2009 (as amended
-by the Jan Vishwas (Amendment of Provisions) Act, 2026, in force 01-05-2026), you are hereby
-served with this IMPROVEMENT NOTICE to rectify the aforesaid contraventions and take the
-specified measures to secure compliance within 30 DAYS of receipt of this notice.
-
-STATUTORY REGIME (JAN VISHWAS AMENDMENT ACT, 2026):
-  • First contravention: {LADDER_36_1.first.describe()}
-  • Failure to comply with this notice within 30 days shall render you liable to civil
-    penalty proceedings under Section 36(1) ({LADDER_36_1.second.describe()}).
-
-Issued by Order:
-Inspector of Legal Metrology, Enforcement Cell, New Delhi.
-================================================================================
-"""
-                window_title = "Statutory Improvement Notice Form (Section 15(6))"
-            else:
-                notice_text = f"""================================================================================
-           GOVERNMENT OF INDIA • DEPARTMENT OF CONSUMER AFFAIRS
-           STATUTORY SHOW CAUSE NOTICE UNDER SECTION 36 / 49
-================================================================================
-Notice Reference: LMPC/HQ/2026/{int(time.time()) % 100000}
-Date: {datetime.datetime.now().strftime('%d-%B-%Y')}
-
-To,
-M/s {item['manufacturer']}
-
-SUBJECT: NOTICE FOR CONTRAVENTION OF THE LEGAL METROLOGY ACT, 2009 AND 
-         RULE 6 OF THE LEGAL METROLOGY (PACKAGED COMMODITIES) RULES, 2011.
-
-WHEREAS, an official inspection was executed on commodity: '{item['name']}';
-Barcode / GTIN: {item['barcode']}
-
-AND WHEREAS, the following statutory contraventions have been verified on the label:
-
-"""
-                for c, d, v, s in failing_checks:
-                    notice_text += f"  • {c}: {d} — Detected: '{v}'\n"
-
-                notice_text += f"""NOW, THEREFORE, take notice that you are hereby called upon to show cause within 15 DAYS
-of receipt of this notice as to why penal proceedings under Section 36 / Section 49 of the
-Legal Metrology Act, 2009 should not be instituted against you before the Competent Adjudicating
-Authority / Magistrate.
-
-Issued by Order:
-Inspector of Legal Metrology, Enforcement Cell, New Delhi.
-================================================================================
-"""
-                window_title = "Statutory Show Cause Notice Form"
-
+            window_title = f"Statutory {res['instrument'].replace('_', ' ').title()} (Jan Vishwas 2026)"
             top = tk.Toplevel(self.root)
             top.title(window_title)
-            top.geometry("700x540")
+            top.geometry("760x600")
 
-            txt = tk.Text(top, wrap=tk.WORD, font=("Consolas", 10), padx=10, pady=10)
-            txt.insert(tk.END, notice_text)
+            # Statutory Determination Header Card
+            hdr_box = ttk.Frame(top, padding="10 8 10 4")
+            hdr_box.pack(fill=tk.X)
+            lbl_inst = ttk.Label(
+                hdr_box, 
+                text=f"STATUTORY INSTRUMENT: {res['instrument']}", 
+                font=("Segoe UI", 10, "bold"), 
+                foreground="#0b3b60" if res["instrument"] == "IMPROVEMENT_NOTICE" else "#b91c1c"
+            )
+            lbl_inst.pack(anchor="w")
+            lbl_reason = ttk.Label(
+                hdr_box, 
+                text=res["reason"], 
+                font=("Segoe UI", 9), 
+                wraplength=730, 
+                foreground="#475569"
+            )
+            lbl_reason.pack(anchor="w", pady=(2, 4))
+
+            txt = tk.Text(top, wrap=tk.WORD, font=("Consolas", 9), padx=10, pady=10)
+            txt.insert(tk.END, res["text"])
             txt.pack(fill=tk.BOTH, expand=True)
 
             btn_frame = ttk.Frame(top, padding=8)
@@ -559,7 +526,7 @@ Inspector of Legal Metrology, Enforcement Cell, New Delhi.
                 f = filedialog.asksaveasfilename(defaultextension=".txt", initialfile=f"LMPC_Notice_{item['name'][:10]}.txt")
                 if f:
                     with open(f, "w", encoding="utf-8") as out:
-                        out.write(notice_text)
+                        out.write(res["text"])
                     messagebox.showinfo("Saved", "Statutory Notice saved successfully.")
 
             ttk.Button(btn_frame, text="Save / Export Notice as TXT", command=save_notice).pack(side=tk.RIGHT, padx=5)
