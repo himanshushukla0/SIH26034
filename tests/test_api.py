@@ -44,6 +44,21 @@ class TestFastAPIEndpoints(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("Invalid URL", response.json()["detail"])
 
+    def test_image_gate_refuses_invalid_image(self):
+        """POST /api/audit/image should refuse non-label image (e.g. too small) with 422 REFUSED."""
+        import cv2, numpy as np
+        small_img = np.zeros((200, 200, 3), dtype=np.uint8)
+        _, buf = cv2.imencode(".jpg", small_img)
+        response = self.client.post(
+            "/api/audit/image",
+            files={"file": ("small.jpg", buf.tobytes(), "image/jpeg")},
+        )
+        self.assertEqual(response.status_code, 422)
+        data = response.json()
+        self.assertEqual(data["status"], "REFUSED")
+        self.assertEqual(data["image_assessment"]["status"], "TOO_SMALL")
+        self.assertIn("at least 400px", data["reason"])
+
     def test_post_draft_notice_improvement(self):
         """POST /api/notice/draft for 1st contravention returns IMPROVEMENT_NOTICE."""
         payload = {

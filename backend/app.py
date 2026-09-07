@@ -286,6 +286,43 @@ async def audit_image(file: UploadFile = File(...)):
 
     logger.info("📸 Image audit request: %s (%d bytes)", file.filename, len(image_bytes))
 
+    # --- Image Gate Enforcement (SIH26034) ---
+    # An image must EARN the right to be audited. If it does not plausibly show
+    # product packaging (e.g. selfie, featureless wall, blurry photo), it is refused.
+    temp_upload_dir = Path("backend/uploads")
+    temp_upload_dir.mkdir(parents=True, exist_ok=True)
+    temp_file = temp_upload_dir / f"gate_{uuid.uuid4().hex}_{Path(file.filename or 'img.jpg').name}"
+    temp_file.write_bytes(image_bytes)
+
+    try:
+        from backend.image_gate import prepare_audit_input
+        gate_result = prepare_audit_input(str(temp_file))
+
+        if not gate_result["proceed"]:
+            logger.warning(
+                "🛑 Image audit refused by Image Gate: %s (status: %s)",
+                gate_result["user_message"],
+                gate_result["image"]["status"],
+            )
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "status": "REFUSED",
+                    "audit_status": "REFUSED",
+                    "error": gate_result["user_message"],
+                    "detail": gate_result["user_message"],
+                    "reason": gate_result["user_message"],
+                    "guidance": gate_result["guidance"],
+                    "image_assessment": gate_result["image"],
+                },
+            )
+    finally:
+        if temp_file.exists():
+            try:
+                temp_file.unlink()
+            except Exception:
+                pass
+
     try:
         result = await run_image_audit(image_bytes=image_bytes)
 
@@ -382,6 +419,45 @@ async def scan_package(
         raise HTTPException(status_code=400, detail="Image too large. Max 20 MB.")
 
     logger.info("📱 Live scan request: %d bytes, barcode=%s", len(image_bytes), barcode or "(auto-detect)")
+
+    # --- Image Gate Enforcement (SIH26034) ---
+    temp_upload_dir = Path("backend/uploads")
+    temp_upload_dir.mkdir(parents=True, exist_ok=True)
+    temp_file = temp_upload_dir / f"scan_gate_{uuid.uuid4().hex}.jpg"
+    temp_file.write_bytes(image_bytes)
+
+    try:
+        from backend.image_gate import prepare_audit_input
+        gate_result = prepare_audit_input(str(temp_file))
+
+        if not gate_result["proceed"]:
+            logger.warning(
+                "🛑 Scan frame refused by Image Gate: %s (status: %s)",
+                gate_result["user_message"],
+                gate_result["image"]["status"],
+            )
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "status": "REFUSED",
+                    "audit_status": "REFUSED",
+                    "error": gate_result["user_message"],
+                    "detail": gate_result["user_message"],
+                    "reason": gate_result["user_message"],
+                    "guidance": gate_result["guidance"],
+                    "image_assessment": gate_result["image"],
+                },
+            )
+
+        # If barcode was decoded by gate and not provided by caller, seed it
+        if not barcode and gate_result.get("barcode", {}).get("barcode"):
+            barcode = gate_result["barcode"]["barcode"]
+    finally:
+        if temp_file.exists():
+            try:
+                temp_file.unlink()
+            except Exception:
+                pass
 
     try:
         result = await run_image_audit(image_bytes=image_bytes)

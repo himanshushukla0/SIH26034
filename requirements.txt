@@ -19,11 +19,12 @@ scrapegraphai==2.2.2
 playwright==1.62.0
 
 # --- Image Processing ---
-opencv-python-headless==4.11.0.86
+opencv-python-headless>=4.10.0
 Pillow==11.2.1
 
 # --- Barcode / QR ---
 pyzbar==0.1.9
+zxing-cpp>=2.2.0
 
 # --- Database ---
 sqlalchemy==2.0.41
