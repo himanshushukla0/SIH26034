@@ -28,9 +28,12 @@ import {
   RefreshCw,
   Zap,
   ZapOff,
+  Layers,
+  Check,
+  Trash2,
 } from "lucide-react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
-import { scanPackage, auditImage } from "../api";
+import { scanPackage, auditImage, auditMultiShot } from "../api";
 import type { AuditResponse } from "../api";
 import { useLanguage } from "../context/LanguageContext";
 import { playScanSuccessFeedback } from "../utils/hapticsAndSound";
@@ -99,12 +102,38 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
   const [hasTorch, setHasTorch] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
 
+  // Multi-Shot Guided Capture state
+  const [isMultiShotMode, setIsMultiShotMode] = useState(false);
+  const [multiShots, setMultiShots] = useState<{
+    front: File | null;
+    back: File | null;
+    barcode: File | null;
+  }>({ front: null, back: null, barcode: null });
+  const [multiShotPreviews, setMultiShotPreviews] = useState<{
+    front: string | null;
+    back: string | null;
+    barcode: string | null;
+  }>({ front: null, back: null, barcode: null });
+  const [activeSlotFlash, setActiveSlotFlash] = useState<string | null>(null);
+
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const nativeDetectorRef = useRef<any>(null);
   const nativeScanTimerRef = useRef<number | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const slotInputRefFront = useRef<HTMLInputElement>(null);
+  const slotInputRefBack = useRef<HTMLInputElement>(null);
+  const slotInputRefBarcode = useRef<HTMLInputElement>(null);
   const processingLockRef = useRef(false);
+
+  const handleSlotFileUpload = useCallback((slot: "front" | "back" | "barcode", file: File) => {
+    const previewUrl = URL.createObjectURL(file);
+    setMultiShots((prev) => ({ ...prev, [slot]: file }));
+    setMultiShotPreviews((prev) => {
+      if (prev[slot]) URL.revokeObjectURL(prev[slot]!);
+      return { ...prev, [slot]: previewUrl };
+    });
+  }, []);
 
   const SCANNER_ELEMENT_ID = "lmpc-barcode-scanner";
 
@@ -587,6 +616,96 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
     }
   }, [lang, onScanComplete, onError, runVerification]);
 
+  /** Capture the current live video frame into a multi-shot slot without stopping the camera */
+  const captureCurrentFrameToSlot = useCallback(async (slot: "front" | "back" | "barcode") => {
+    try {
+      const videoElem = videoContainerRef.current?.querySelector("video") as HTMLVideoElement | null;
+      if (!videoElem || videoElem.videoWidth === 0) return;
+
+      const canvasElem = document.createElement("canvas");
+      canvasElem.width = videoElem.videoWidth;
+      canvasElem.height = videoElem.videoHeight;
+      const ctx = canvasElem.getContext("2d");
+      if (!ctx) return;
+
+      ctx.drawImage(videoElem, 0, 0);
+      const capturedBlob = await new Promise<Blob | null>((resolve) => {
+        canvasElem.toBlob((b) => resolve(b), "image/jpeg", 0.95);
+      });
+
+      if (capturedBlob) {
+        playScanSuccessFeedback();
+        setActiveSlotFlash(slot);
+        setTimeout(() => setActiveSlotFlash(null), 600);
+
+        const fileName = `inspection_${slot}_panel.jpg`;
+        const file = new File([capturedBlob], fileName, { type: "image/jpeg" });
+        const previewUrl = URL.createObjectURL(capturedBlob);
+
+        setMultiShots((prev) => ({ ...prev, [slot]: file }));
+        setMultiShotPreviews((prev) => {
+          if (prev[slot]) URL.revokeObjectURL(prev[slot]!);
+          return { ...prev, [slot]: previewUrl };
+        });
+      }
+    } catch (e) {
+      console.error("Frame capture to slot error:", e);
+    }
+  }, []);
+
+  /** Clear a captured slot */
+  const clearSlot = useCallback((slot: "front" | "back" | "barcode") => {
+    setMultiShots((prev) => ({ ...prev, [slot]: null }));
+    setMultiShotPreviews((prev) => {
+      if (prev[slot]) URL.revokeObjectURL(prev[slot]!);
+      return { ...prev, [slot]: null };
+    });
+  }, []);
+
+  /** Reset all multi-shot slots */
+  const resetAllSlots = useCallback(() => {
+    setMultiShotPreviews((prev) => {
+      Object.values(prev).forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+      return { front: null, back: null, barcode: null };
+    });
+    setMultiShots({ front: null, back: null, barcode: null });
+  }, []);
+
+  /** Execute multi-shot unified statutory audit */
+  const handleExecuteMultiShotAudit = useCallback(async () => {
+    const capturedCount = [multiShots.front, multiShots.back, multiShots.barcode].filter(Boolean).length;
+    if (capturedCount === 0) {
+      onError(lang === "hi" ? "कृपया कम से कम एक पैनल कैप्चर करें।" : "Please capture at least one packaging panel (Front PDP or Back Declarations).");
+      return;
+    }
+
+    try {
+      if (scannerRef.current && scannerRef.current.isScanning) {
+        await scannerRef.current.stop();
+      }
+    } catch {
+      // Ignore
+    }
+    setIsScanning(false);
+    setIsProcessing(true);
+    setScanStatus("processing");
+    setProcessingStage(lang === "hi" ? "मल्टी-शॉट पैकेजिंग का एकीकृत वैधानिक विश्लेषण (LMPC नियम 6)..." : "Auditing unified multi-shot packaging panels under LMPC Rule 6...");
+
+    try {
+      const result = await auditMultiShot(multiShots);
+      setScanStatus("success");
+      onScanComplete(result);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setScanStatus("error");
+      onError(msg || "Failed to audit multi-shot packaging.");
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [multiShots, lang, onScanComplete, onError]);
+
   /** Handle file upload scan for barcodes and packaging photos. */
   const handleFileScan = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -660,6 +779,8 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
     };
   }, []);
 
+  const capturedSlotsCount = [multiShots.front, multiShots.back, multiShots.barcode].filter(Boolean).length;
+
   return (
     <div
       style={{
@@ -680,6 +801,378 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
         style={{ display: "none" }}
         onChange={handleFileScan}
       />
+
+      {/* Hidden File Inputs for Direct Multi-Shot Slot Uploads */}
+      <input
+        ref={slotInputRefFront}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleSlotFileUpload("front", f);
+        }}
+      />
+      <input
+        ref={slotInputRefBack}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleSlotFileUpload("back", f);
+        }}
+      />
+      <input
+        ref={slotInputRefBarcode}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleSlotFileUpload("barcode", f);
+        }}
+      />
+
+      {/* ================= SCAN MODE TOGGLE PILL ================= */}
+      <div
+        style={{
+          display: "flex",
+          background: "var(--bg-secondary, #f1f5f9)",
+          padding: "4px",
+          borderRadius: "12px",
+          gap: "6px",
+          border: "1px solid var(--border-card, #e2e8f0)",
+          width: "100%",
+          maxWidth: "540px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setIsMultiShotMode(false)}
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            padding: "8px 14px",
+            borderRadius: "8px",
+            border: "none",
+            fontSize: "0.85rem",
+            fontWeight: !isMultiShotMode ? 700 : 500,
+            background: !isMultiShotMode ? "var(--gov-navy-primary, #002B49)" : "transparent",
+            color: !isMultiShotMode ? "#ffffff" : "var(--text-muted, #64748b)",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+        >
+          <Barcode size={16} />
+          <span>{lang === "hi" ? "सिंगल स्कैन / बारकोड" : "Single Scan / Barcode"}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsMultiShotMode(true)}
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            padding: "8px 14px",
+            borderRadius: "8px",
+            border: "none",
+            fontSize: "0.85rem",
+            fontWeight: isMultiShotMode ? 700 : 500,
+            background: isMultiShotMode ? "var(--gov-navy-primary, #002B49)" : "transparent",
+            color: isMultiShotMode ? "#ffffff" : "var(--text-muted, #64748b)",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+        >
+          <Layers size={16} />
+          <span>{lang === "hi" ? "मल्टी-शॉट पैकेजिंग (3 पैनल)" : "Multi-Shot Packaging (3 Panels)"}</span>
+          {capturedSlotsCount > 0 && (
+            <span
+              style={{
+                fontSize: "0.7rem",
+                background: isMultiShotMode ? "#38bdf8" : "var(--gov-navy-primary, #002B49)",
+                color: isMultiShotMode ? "#0f172a" : "#ffffff",
+                padding: "1px 6px",
+                borderRadius: "999px",
+                fontWeight: 800,
+              }}
+            >
+              {capturedSlotsCount}/3
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ================= MULTI-SHOT 3-PANEL GUIDED DOCK ================= */}
+      {isMultiShotMode && (
+        <div
+          style={{
+            width: "100%",
+            background: "#ffffff",
+            border: "1px solid var(--border-card, #e2e8f0)",
+            borderRadius: "12px",
+            padding: "1rem",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Layers size={18} color="var(--gov-navy-primary, #002B49)" />
+              <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--gov-navy-dark, #0f172a)" }}>
+                {lang === "hi" ? "मल्टी-शॉट पैकेजिंग कैप्चर (एक वैधानिक पैकेज)" : "Multi-Shot Unified Packaging Capture (One Statutory Entity)"}
+              </span>
+            </div>
+            <span style={{ fontSize: "0.74rem", fontFamily: "var(--font-mono)", color: "var(--text-muted, #64748b)" }}>
+              {capturedSlotsCount}/3 {lang === "hi" ? "पैनल तैयार" : "Panels Staged"}
+            </span>
+          </div>
+
+          {/* 3 Panels Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "0.75rem" }}>
+            {/* Front Panel Slot */}
+            <div
+              style={{
+                border: multiShots.front ? "2px solid #10b981" : activeSlotFlash === "front" ? "2px solid #38bdf8" : "1px dashed #cbd5e1",
+                borderRadius: "8px",
+                padding: "0.65rem",
+                background: multiShots.front ? "rgba(16, 185, 129, 0.04)" : "#f8fafc",
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.4rem",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--gov-navy-dark, #0f172a)" }}>
+                  {lang === "hi" ? "1. फ्रंट PDP" : "1. Front PDP"}
+                </span>
+                {multiShots.front ? (
+                  <span style={{ fontSize: "0.68rem", color: "#059669", fontWeight: 700, display: "flex", alignItems: "center", gap: "2px" }}>
+                    <Check size={12} /> {lang === "hi" ? "तैयार" : "Ready"}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: "0.68rem", color: "#94a3b8" }}>
+                    {lang === "hi" ? "ब्रांड एवं MRP" : "Brand & MRP"}
+                  </span>
+                )}
+              </div>
+
+              {multiShotPreviews.front ? (
+                <div style={{ position: "relative", height: "70px", borderRadius: "6px", overflow: "hidden" }}>
+                  <img src={multiShotPreviews.front} alt="Front" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <button
+                    onClick={() => clearSlot("front")}
+                    style={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      background: "rgba(0,0,0,0.6)",
+                      border: "none",
+                      color: "#fff",
+                      borderRadius: "50%",
+                      width: "20px",
+                      height: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                    }}
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => slotInputRefFront.current?.click()}
+                  style={{ height: "70px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#f1f5f9", borderRadius: "6px", cursor: "pointer", border: "1px dashed #cbd5e1" }}
+                  title="Click to upload file"
+                >
+                  <Upload size={14} color="#64748b" />
+                  <span style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>
+                    {lang === "hi" ? "कैमरा या अपलोड" : "Snap or Upload"}
+                  </span>
+                </div>
+              )}
+
+              {isScanning && (
+                <button
+                  onClick={() => captureCurrentFrameToSlot("front")}
+                  className="btn-gov-secondary"
+                  style={{ fontSize: "0.75rem", padding: "0.35rem 0.6rem", width: "100%", justifyContent: "center" }}
+                >
+                  <Camera size={13} />
+                  <span>{lang === "hi" ? "फ्रंट कैप्चर करें" : "Snap Front PDP"}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Back Panel Slot */}
+            <div
+              style={{
+                border: multiShots.back ? "2px solid #10b981" : activeSlotFlash === "back" ? "2px solid #38bdf8" : "1px dashed #cbd5e1",
+                borderRadius: "8px",
+                padding: "0.65rem",
+                background: multiShots.back ? "rgba(16, 185, 129, 0.04)" : "#f8fafc",
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.4rem",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--gov-navy-dark, #0f172a)" }}>
+                  {lang === "hi" ? "2. बैक घोषणाएं" : "2. Back Declarations"}
+                </span>
+                {multiShots.back ? (
+                  <span style={{ fontSize: "0.68rem", color: "#059669", fontWeight: 700, display: "flex", alignItems: "center", gap: "2px" }}>
+                    <Check size={12} /> {lang === "hi" ? "तैयार" : "Ready"}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: "0.68rem", color: "#94a3b8" }}>
+                    {lang === "hi" ? "घोषणाएं व पता" : "Mfg, Date, Care"}
+                  </span>
+                )}
+              </div>
+
+              {multiShotPreviews.back ? (
+                <div style={{ position: "relative", height: "70px", borderRadius: "6px", overflow: "hidden" }}>
+                  <img src={multiShotPreviews.back} alt="Back" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <button
+                    onClick={() => clearSlot("back")}
+                    style={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      background: "rgba(0,0,0,0.6)",
+                      border: "none",
+                      color: "#fff",
+                      borderRadius: "50%",
+                      width: "20px",
+                      height: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                    }}
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => slotInputRefBack.current?.click()}
+                  style={{ height: "70px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#f1f5f9", borderRadius: "6px", cursor: "pointer", border: "1px dashed #cbd5e1" }}
+                  title="Click to upload file"
+                >
+                  <Upload size={14} color="#64748b" />
+                  <span style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>
+                    {lang === "hi" ? "कैमरा या अपलोड" : "Snap or Upload"}
+                  </span>
+                </div>
+              )}
+
+              {isScanning && (
+                <button
+                  onClick={() => captureCurrentFrameToSlot("back")}
+                  className="btn-gov-secondary"
+                  style={{ fontSize: "0.75rem", padding: "0.35rem 0.6rem", width: "100%", justifyContent: "center" }}
+                >
+                  <Camera size={13} />
+                  <span>{lang === "hi" ? "बैक कैप्चर करें" : "Snap Back Panel"}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Barcode / Sticker Slot */}
+            <div
+              style={{
+                border: multiShots.barcode ? "2px solid #10b981" : activeSlotFlash === "barcode" ? "2px solid #38bdf8" : "1px dashed #cbd5e1",
+                borderRadius: "8px",
+                padding: "0.65rem",
+                background: multiShots.barcode ? "rgba(16, 185, 129, 0.04)" : "#f8fafc",
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.4rem",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--gov-navy-dark, #0f172a)" }}>
+                  {lang === "hi" ? "3. स्टिकर / बारकोड" : "3. Price Sticker / Barcode"}
+                </span>
+                {multiShots.barcode ? (
+                  <span style={{ fontSize: "0.68rem", color: "#059669", fontWeight: 700, display: "flex", alignItems: "center", gap: "2px" }}>
+                    <Check size={12} /> {lang === "hi" ? "तैयार" : "Ready"}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: "0.68rem", color: "#94a3b8" }}>
+                    {lang === "hi" ? "वैकल्पिक" : "Optional"}
+                  </span>
+                )}
+              </div>
+
+              {multiShotPreviews.barcode ? (
+                <div style={{ position: "relative", height: "70px", borderRadius: "6px", overflow: "hidden" }}>
+                  <img src={multiShotPreviews.barcode} alt="Barcode / Sticker" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <button
+                    onClick={() => clearSlot("barcode")}
+                    style={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      background: "rgba(0,0,0,0.6)",
+                      border: "none",
+                      color: "#fff",
+                      borderRadius: "50%",
+                      width: "20px",
+                      height: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                    }}
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => slotInputRefBarcode.current?.click()}
+                  style={{ height: "70px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#f1f5f9", borderRadius: "6px", cursor: "pointer", border: "1px dashed #cbd5e1" }}
+                  title="Click to upload file"
+                >
+                  <Upload size={14} color="#64748b" />
+                  <span style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>
+                    {lang === "hi" ? "री-प्राइस स्टिकर" : "Sticker or Barcode"}
+                  </span>
+                </div>
+              )}
+
+              {isScanning && (
+                <button
+                  onClick={() => captureCurrentFrameToSlot("barcode")}
+                  className="btn-gov-secondary"
+                  style={{ fontSize: "0.75rem", padding: "0.35rem 0.6rem", width: "100%", justifyContent: "center" }}
+                >
+                  <Camera size={13} />
+                  <span>{lang === "hi" ? "स्टिकर कैप्चर करें" : "Snap Sticker"}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= FIELD RETICLE VIEWPORT ================= */}
       <motion.div
@@ -1071,7 +1564,7 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
 
       {/* ================= PRIMARY ACTION CONTROLS ================= */}
       <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center" }}>
-        {!isScanning && !isProcessing && (
+        {!isMultiShotMode && !isScanning && !isProcessing && (
           <>
             <button
               onClick={() => {
@@ -1106,7 +1599,7 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
           </>
         )}
 
-        {isScanning && (
+        {!isMultiShotMode && isScanning && (
           <>
             {/* Direct Snapshot Capture & Multimodal Audit Button */}
             <button
@@ -1122,6 +1615,89 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
             >
               <Sparkles size={18} />
               <span>{t("capture_frame_btn")}</span>
+            </button>
+
+            <button
+              onClick={stopScanner}
+              className="btn-gov-danger"
+              style={{ padding: "0.75rem 1.5rem", fontSize: "0.92rem" }}
+            >
+              <CameraOff size={18} />
+              <span>{t("deactivate_camera")}</span>
+            </button>
+          </>
+        )}
+
+        {/* Multi-Shot Mode Controls */}
+        {isMultiShotMode && !isScanning && !isProcessing && (
+          <>
+            <button
+              onClick={() => {
+                resetScanner();
+                startScanner();
+              }}
+              className="btn-gov-primary"
+              style={{ padding: "0.75rem 1.75rem", fontSize: "0.92rem" }}
+            >
+              <Camera size={18} />
+              <span>{lang === "hi" ? "पैनल कैप्चर हेतु कैमरा खोलें" : "Open Camera to Capture Panels"}</span>
+            </button>
+
+            {capturedSlotsCount > 0 && (
+              <>
+                <button
+                  onClick={handleExecuteMultiShotAudit}
+                  disabled={isProcessing}
+                  className="btn-gov-primary"
+                  style={{
+                    padding: "0.75rem 1.75rem",
+                    fontSize: "0.92rem",
+                    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                    boxShadow: "0 0 20px rgba(16, 185, 129, 0.4)",
+                  }}
+                >
+                  <Layers size={18} />
+                  <span>
+                    {lang === "hi"
+                      ? `मल्टी-शॉट ऑडिट (${capturedSlotsCount}/3 पैनल)`
+                      : `Audit Multi-Shot Packaging (${capturedSlotsCount}/3 Panels)`}
+                  </span>
+                </button>
+
+                <button
+                  onClick={resetAllSlots}
+                  className="btn-gov-secondary"
+                  style={{ padding: "0.75rem 1.25rem", fontSize: "0.92rem" }}
+                  title="Clear all captured packaging panels"
+                >
+                  <Trash2 size={16} color="#ef4444" />
+                  <span>{lang === "hi" ? "पैनल साफ़ करें" : "Reset Panels"}</span>
+                </button>
+              </>
+            )}
+          </>
+        )}
+
+        {isMultiShotMode && isScanning && (
+          <>
+            <button
+              onClick={handleExecuteMultiShotAudit}
+              disabled={isProcessing || capturedSlotsCount === 0}
+              className="btn-gov-primary"
+              style={{
+                padding: "0.75rem 1.75rem",
+                fontSize: "0.92rem",
+                background: capturedSlotsCount > 0 ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "#64748b",
+                boxShadow: capturedSlotsCount > 0 ? "0 0 20px rgba(16, 185, 129, 0.4)" : "none",
+                cursor: capturedSlotsCount > 0 ? "pointer" : "not-allowed",
+              }}
+            >
+              <Layers size={18} />
+              <span>
+                {lang === "hi"
+                  ? `ऑडिट प्रारंभ करें (${capturedSlotsCount}/3)`
+                  : `Execute Multi-Shot Audit (${capturedSlotsCount}/3)`}
+              </span>
             </button>
 
             <button

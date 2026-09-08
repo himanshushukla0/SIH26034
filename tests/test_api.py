@@ -24,7 +24,7 @@ class TestFastAPIEndpoints(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["status"], "healthy")
-        self.assertEqual(data["service"], "LMPC Compliance Engine")
+        self.assertEqual(data["service"], "Kraya-Rakshak")
 
     def test_invalid_image_upload_type(self):
         """POST /api/audit/image should reject non-image file types."""

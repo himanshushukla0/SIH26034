@@ -1,5 +1,6 @@
 """
-SIH26034 — LMPC Compliance Engine: FastAPI Application
+SIH26034 — Kraya-Rakshak (क्रय-रक्षक): Automated LMPC Compliance Engine
+FastAPI Application
 
 REST API server exposing endpoints for:
 - Image-based packaging audit (POST /api/audit/image)
@@ -209,7 +210,7 @@ async def persist_audit_result(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize database tables on startup."""
-    logger.info("🏛️ SIH26034 LMPC Compliance Engine starting...")
+    logger.info("🏛️ SIH26034 Kraya-Rakshak (क्रय-रक्षक) Compliance Engine starting...")
     logger.info("   Model: %s", settings.GEMINI_MODEL)
     logger.info("   Database: %s", settings.DATABASE_URL)
     await init_db()
@@ -224,11 +225,11 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
-    title="SIH26034 — LMPC Compliance Engine",
+    title="Kraya-Rakshak (क्रय-रक्षक) — Automated LMPC Compliance Engine",
     description=(
-        "Automated verification of mandatory declarations on pre-packaged "
-        "commodities under the Legal Metrology (Packaged Commodities) Rules, 2011. "
-        "Supports physical packaging image scanning and e-commerce URL auditing."
+        "Kraya-Rakshak (क्रय-रक्षक): Automated verification of mandatory declarations on "
+        "pre-packaged commodities under the Legal Metrology (Packaged Commodities) Rules, 2011. "
+        "Supports physical packaging image scanning, multi-shot panel capture, and e-commerce URL auditing."
     ),
     version="1.0.0",
     lifespan=lifespan,
@@ -260,7 +261,8 @@ async def health_check():
     """Server health check endpoint."""
     return {
         "status": "healthy",
-        "service": "LMPC Compliance Engine",
+        "service": "Kraya-Rakshak",
+        "full_name": "Kraya-Rakshak (क्रय-रक्षक) — Automated LMPC Compliance Engine",
         "model": settings.GEMINI_MODEL,
         "version": "1.0.0",
     }
@@ -520,35 +522,61 @@ async def audit_multi_shot(
     Parses front panel, back declarations panel, and barcode/price close-up as ONE unified label.
     Solves the physical packaging reality where declarations are spread across opposite panels.
     """
-    shots = [s for s in [shot_front, shot_back, shot_barcode] if s is not None]
-    if not shots:
-        raise HTTPException(status_code=400, detail="At least one packaging shot is required.")
+    import time
+    t0 = time.perf_counter()
+
+    shots_map = [
+        ("front", shot_front, "Front Display Panel (PDP)"),
+        ("back", shot_back, "Back / Side Declarations Panel"),
+        ("barcode", shot_barcode, "Barcode / Price Sticker Close-Up"),
+    ]
+    active_shots = [(name, f, desc) for name, f, desc in shots_map if f is not None]
+    if not active_shots:
+        raise HTTPException(status_code=400, detail="At least one packaging shot (front, back, or barcode) is required.")
 
     shot_paths = []
     ocr_texts = []
     all_lines = []
     detected_barcodes = []
+    shots_metadata = []
 
     from lmpc_ocr import read_label
-    from lmpc_labelparse import parse_label
+    from lmpc_labelparse import parse_label, ParsedField
     from lmpc_checks import run_checks
 
-    for idx, s in enumerate(shots):
+    for panel_name, s, panel_desc in active_shots:
         p = save_upload(s)
         shot_paths.append(p)
         gate = vision.prepare_audit_input(p)
-        b = gate.get("barcode", {}).get("barcode")
+        b = None
+        if gate and isinstance(gate, dict):
+            barcode_dict = gate.get("barcode")
+            if isinstance(barcode_dict, dict):
+                b = barcode_dict.get("barcode")
         if b:
             detected_barcodes.append(b)
 
         ocr_res = await read_label(p)
-        if ocr_res.text:
-            ocr_texts.append(ocr_res.text)
+        txt = ocr_res.text or ""
+        if txt:
+            ocr_texts.append(f"--- PANEL: {panel_name.upper()} ({panel_desc}) ---\n{txt}")
             all_lines.extend(ocr_res.lines)
+
+        shots_metadata.append({
+            "panel": panel_name,
+            "description": panel_desc,
+            "filename": s.filename,
+            "path": p,
+            "has_barcode": bool(b),
+            "lines_count": len(ocr_res.lines),
+            "text_preview": (txt[:120] + ("..." if len(txt) > 120 else "")) if txt else "",
+        })
 
     unified_text = "\n".join(ocr_texts)
     parse_res = parse_label({"text": unified_text, "lines": all_lines})
     checks_res = run_checks(parse_res.fields, has_pin_code=parse_res.has_pin_code)
+
+    elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
 
     barcode_val = detected_barcodes[0] if detected_barcodes else None
     verification_data = None
@@ -557,14 +585,76 @@ async def audit_multi_shot(
             v_res = await verification_agent.verify_packaging(
                 barcode=barcode_val,
                 extractions={
-                    "product_name": {"value": parse_res.fields.get("GENERIC_NAME", {}).value},
-                    "mrp": {"value": parse_res.fields.get("MRP", {}).value},
-                    "net_quantity": {"value": parse_res.fields.get("NET_QUANTITY", {}).value},
+                    "product_name": {"value": parse_res.fields.get("GENERIC_NAME", ParsedField()).value},
+                    "mrp": {"value": parse_res.fields.get("MRP", ParsedField()).value},
+                    "net_quantity": {"value": parse_res.fields.get("NET_QUANTITY", ParsedField()).value},
                 }
             )
             verification_data = v_res.as_dict()
         except Exception:
             pass
+
+    # Computed USP fallback if MRP and Net Qty exist
+    computed_usp = parse_res.fields.get("UNIT_SALE_PRICE", ParsedField()).value
+    if not computed_usp and parse_res.fields.get("MRP") and parse_res.fields.get("NET_QUANTITY"):
+        mrp_f = parse_res.fields.get("MRP")
+        qty_f = parse_res.fields.get("NET_QUANTITY")
+        if mrp_f.normalized_numeric and qty_f.normalized_numeric and qty_f.normalized_unit:
+            calc_usp = mrp_f.normalized_numeric / qty_f.normalized_numeric
+            computed_usp = f"₹ {calc_usp:.2f} / {qty_f.normalized_unit} (Calculated)"
+
+    # Complete 10-declaration status mapping for frontend checklist
+    declaration_status = {
+        "manufacturer_name": {
+            "status": "FOUND" if parse_res.fields.get("MANUFACTURER", ParsedField()).value else "MISSING",
+            "value": parse_res.fields.get("MANUFACTURER", ParsedField()).value,
+            "stitched": parse_res.fields.get("MANUFACTURER", ParsedField()).stitched,
+        },
+        "manufacturer_address": {
+            "status": "FOUND" if parse_res.fields.get("MANUFACTURER", ParsedField()).value else "MISSING",
+            "value": parse_res.fields.get("MANUFACTURER", ParsedField()).value,
+            "stitched": parse_res.fields.get("MANUFACTURER", ParsedField()).stitched,
+        },
+        "country_of_origin": {
+            "status": "FOUND" if parse_res.fields.get("COUNTRY_OF_ORIGIN", ParsedField()).value else "MISSING",
+            "value": parse_res.fields.get("COUNTRY_OF_ORIGIN", ParsedField()).value,
+            "stitched": parse_res.fields.get("COUNTRY_OF_ORIGIN", ParsedField()).stitched,
+        },
+        "generic_name": {
+            "status": "PARTIAL" if not parse_res.fields.get("GENERIC_NAME", ParsedField()).value else "FOUND",
+            "value": parse_res.fields.get("GENERIC_NAME", ParsedField()).value or "Unparsed by regex (Requires vision model / officer confirmation)",
+        },
+        "net_quantity": {
+            "status": "FOUND" if parse_res.fields.get("NET_QUANTITY", ParsedField()).value else "MISSING",
+            "value": parse_res.fields.get("NET_QUANTITY", ParsedField()).value,
+            "stitched": parse_res.fields.get("NET_QUANTITY", ParsedField()).stitched,
+        },
+        "manufacture_date": {
+            "status": "FOUND" if parse_res.fields.get("DATE_OF_MANUFACTURE", ParsedField()).value else "MISSING",
+            "value": parse_res.fields.get("DATE_OF_MANUFACTURE", ParsedField()).value,
+            "stitched": parse_res.fields.get("DATE_OF_MANUFACTURE", ParsedField()).stitched,
+        },
+        "expiry_date": {
+            "status": "FOUND" if parse_res.fields.get("BEST_BEFORE", ParsedField()).value else "MISSING",
+            "value": parse_res.fields.get("BEST_BEFORE", ParsedField()).value,
+            "stitched": parse_res.fields.get("BEST_BEFORE", ParsedField()).stitched,
+        },
+        "mrp": {
+            "status": "FOUND" if parse_res.fields.get("MRP", ParsedField()).value else "MISSING",
+            "value": parse_res.fields.get("MRP", ParsedField()).value,
+            "stitched": parse_res.fields.get("MRP", ParsedField()).stitched,
+        },
+        "unit_sale_price": {
+            "status": "FOUND" if parse_res.fields.get("UNIT_SALE_PRICE", ParsedField()).value else "MISSING",
+            "value": parse_res.fields.get("UNIT_SALE_PRICE", ParsedField()).value or computed_usp,
+            "stitched": parse_res.fields.get("UNIT_SALE_PRICE", ParsedField()).stitched,
+        },
+        "consumer_care": {
+            "status": "FOUND" if parse_res.fields.get("CONSUMER_CARE", ParsedField()).value else "MISSING",
+            "value": parse_res.fields.get("CONSUMER_CARE", ParsedField()).value,
+            "stitched": parse_res.fields.get("CONSUMER_CARE", ParsedField()).stitched,
+        },
+    }
 
     verdict_data = {
         "compliance_score": checks_res["compliance_score_percent"],
@@ -572,6 +662,8 @@ async def audit_multi_shot(
         "total_checks": checks_res["total"],
         "passed_checks": checks_res["passed"],
         "failed_checks": checks_res["failed"],
+        "computed_usp": computed_usp,
+        "declaration_status": declaration_status,
         "violations": [
             {
                 "rule_reference": f["clause"],
@@ -587,18 +679,45 @@ async def audit_multi_shot(
     }
 
     extractions = {
-        k: {"value": v.value, "confidence": v.confidence, "quoted_text": v.quoted_text}
-        for k, v in parse_res.fields.items()
+        "product_name": {"value": parse_res.fields.get("GENERIC_NAME", ParsedField()).value, "confidence": parse_res.fields.get("GENERIC_NAME", ParsedField()).confidence},
+        "generic_name": {"value": parse_res.fields.get("GENERIC_NAME", ParsedField()).value, "confidence": parse_res.fields.get("GENERIC_NAME", ParsedField()).confidence},
+        "manufacturer_name": {"value": parse_res.fields.get("MANUFACTURER", ParsedField()).value, "confidence": parse_res.fields.get("MANUFACTURER", ParsedField()).confidence},
+        "manufacturer_address": {"value": parse_res.fields.get("MANUFACTURER", ParsedField()).value, "confidence": parse_res.fields.get("MANUFACTURER", ParsedField()).confidence},
+        "country_of_origin": {"value": parse_res.fields.get("COUNTRY_OF_ORIGIN", ParsedField()).value, "confidence": parse_res.fields.get("COUNTRY_OF_ORIGIN", ParsedField()).confidence},
+        "net_quantity": {"value": parse_res.fields.get("NET_QUANTITY", ParsedField()).value, "confidence": parse_res.fields.get("NET_QUANTITY", ParsedField()).confidence},
+        "mrp": {"value": parse_res.fields.get("MRP", ParsedField()).value, "confidence": parse_res.fields.get("MRP", ParsedField()).confidence},
+        "unit_sale_price": {"value": parse_res.fields.get("UNIT_SALE_PRICE", ParsedField()).value or computed_usp, "confidence": parse_res.fields.get("UNIT_SALE_PRICE", ParsedField()).confidence},
+        "manufacture_date": {"value": parse_res.fields.get("DATE_OF_MANUFACTURE", ParsedField()).value, "confidence": parse_res.fields.get("DATE_OF_MANUFACTURE", ParsedField()).confidence},
+        "expiry_date": {"value": parse_res.fields.get("BEST_BEFORE", ParsedField()).value, "confidence": parse_res.fields.get("BEST_BEFORE", ParsedField()).confidence},
+        "consumer_care_name": {"value": parse_res.fields.get("CONSUMER_CARE", ParsedField()).value, "confidence": parse_res.fields.get("CONSUMER_CARE", ParsedField()).confidence},
+        "barcode_number": {"value": barcode_val, "confidence": 1.0 if barcode_val else 0.0},
+    }
+
+    stage1_economics = {
+        "cost_inr": 0.0,
+        "latency_ms": elapsed_ms,
+        "settled_stage": 1 if not parse_res.needs_model_escalation else 3,
+        "needs_model": parse_res.needs_model_escalation,
+        "reason": parse_res.escalation_reason,
+        "coverage_percent": parse_res.coverage_percent,
+        "parsed_count": parse_res.parsed_count,
+        "stitched_fields": [k for k, v in parse_res.fields.items() if getattr(v, "stitched", False)],
+        "pin_code_detected": parse_res.has_pin_code,
+        "pin_code": parse_res.pin_code,
     }
 
     result = {
         "status": "COMPLETED",
+        "audit_status": checks_res["overall_status"],
+        "declaration_status": declaration_status,
         "input_type": "multi_shot",
         "shots_count": len(shot_paths),
+        "shots_metadata": shots_metadata,
         "verdict": verdict_data,
         "extractions": extractions,
         "verification": verification_data,
         "parse_result": parse_res.as_dict(),
+        "stage1_economics": stage1_economics,
         "summary": {
             "score_percent": checks_res["compliance_score_percent"],
             "verdict": checks_res["overall_status"],

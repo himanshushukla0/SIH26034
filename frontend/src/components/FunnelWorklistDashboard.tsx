@@ -2,24 +2,13 @@ import { useState, useEffect } from "react";
 import {
   Filter,
   ShieldAlert,
-  ShieldCheck,
-  Zap,
-  TrendingDown,
   FileCheck,
-  AlertTriangle,
   Scale,
-  Building2,
-  HelpCircle,
-  ExternalLink,
-  ChevronRight,
   Database,
-  Eye,
   Sliders,
-  Sparkles,
   Info,
   CheckCircle2,
   XCircle,
-  Clock,
   Printer,
   FileText,
 } from "lucide-react";
@@ -38,9 +27,9 @@ export default function FunnelWorklistDashboard() {
   const [funnelData, setFunnelData] = useState<FunnelStatsResponse | null>(null);
   const [worklist, setWorklist] = useState<OfficerWorklistItem[]>([]);
   const [benchmarkData, setBenchmarkData] = useState<EvaluationBenchmarkResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [activeWorklistFilter, setActiveWorklistFilter] = useState<string>("ALL");
   const [selectedNoticeItem, setSelectedNoticeItem] = useState<OfficerWorklistItem | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Dynamic Scale Extrapolation Calculator State
   const [sliderSkus, setSliderSkus] = useState<number>(1000000);
@@ -118,6 +107,14 @@ export default function FunnelWorklistDashboard() {
   const extrapolatedCost = Math.round(sliderSkus * costPerSku);
   const manualInspectionCost = Math.round(sliderSkus * 150);
   const taxpayerSavings = manualInspectionCost - extrapolatedCost;
+
+  if (isLoading && !funnelData) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-slate-400 text-sm">Loading statutory funnel telemetry...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-16 text-slate-100">

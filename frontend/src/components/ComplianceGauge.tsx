@@ -8,6 +8,7 @@ interface ComplianceGaugeProps {
 
 function getGaugeColor(score: number, status?: string): string {
   if (status === "NEEDS_MANUAL_REVIEW") return "#f59e0b"; // Amber
+  if (status === "INSUFFICIENT_DATA") return "#6366f1"; // Indigo / Informational
   if (score >= 90) return "#10b981"; // Emerald
   if (score >= 70) return "#22d3ee"; // Cyan
   if (score >= 50) return "#f59e0b"; // Amber
@@ -23,6 +24,8 @@ function getStatusLabel(status: string): string {
       return "PARTIAL";
     case "NEEDS_MANUAL_REVIEW":
       return "MANUAL REVIEW (SEC 15)";
+    case "INSUFFICIENT_DATA":
+      return "INSUFFICIENT DATA";
     case "NON_COMPLIANT":
       return "NON-COMPLIANT";
     default:
@@ -37,6 +40,8 @@ function getStatusBadgeClass(status: string): string {
     case "PARTIAL_VIOLATION":
     case "NEEDS_MANUAL_REVIEW":
       return "badge-partial";
+    case "INSUFFICIENT_DATA":
+      return "badge-info";
     case "NON_COMPLIANT":
       return "badge-violation";
     default:

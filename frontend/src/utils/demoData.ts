@@ -883,7 +883,6 @@ export function generateDynamicBarcodeAudit(
       additional_declarations: [`GS1 Country Prefix: ${country}`, `SKU Ref: ${cleanCode}`],
     },
     verdict: {
-      score: compScore,
       compliance_score: compScore,
       total_rules: 10,
       total_checks: 10,

@@ -38,6 +38,7 @@ class AuditInputType(str, enum.Enum):
     IMAGE = "image"
     URL = "url"
     CAMERA = "camera"
+    MULTI_SHOT = "multi_shot"
 
 
 class AuditStatus(str, enum.Enum):

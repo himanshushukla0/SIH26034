@@ -74,7 +74,7 @@ export interface AuditVerdict {
   total_checks: number;
   passed_checks: number;
   failed_checks: number;
-  overall_status: "COMPLIANT" | "NON_COMPLIANT" | "PARTIAL_VIOLATION" | "NEEDS_MANUAL_REVIEW";
+  overall_status: "COMPLIANT" | "NON_COMPLIANT" | "PARTIAL_VIOLATION" | "NEEDS_MANUAL_REVIEW" | "INSUFFICIENT_DATA";
   computed_usp: string | null;
   declaration_status: Record<string, DeclarationStatus>;
   violations: Violation[];
@@ -83,6 +83,7 @@ export interface AuditVerdict {
   governing_rules?: string;
   corporate_liability_clause?: string;
   manual_review_reasons?: string[];
+  [key: string]: unknown;
 }
 
 /** Single verification check result from the authenticity scanner. */
@@ -105,13 +106,46 @@ export interface PackageAuthenticityVerdict {
   checks: VerificationCheck[];
 }
 
+/** Metadata for individual panels in a multi-shot packaging capture. */
+export interface ShotMetadata {
+  panel: "front" | "back" | "barcode";
+  description: string;
+  filename?: string;
+  path?: string;
+  has_barcode: boolean;
+  lines_count: number;
+  text_preview?: string;
+  previewUrl?: string;
+}
+
+/** Zero-cost microsecond Stage 1 screener economics metrics. */
+export interface Stage1Economics {
+  cost_inr: number;
+  latency_ms: number;
+  settled_stage: number;
+  needs_model: boolean;
+  reason: string;
+  coverage_percent: number;
+  parsed_count: number;
+  stitched_fields: string[];
+  pin_code_detected: boolean;
+  pin_code?: string | null;
+}
+
+/** Multi-shot file bundle for unified packaging capture. */
+export interface MultiShotFiles {
+  front?: File | null;
+  back?: File | null;
+  barcode?: File | null;
+}
+
 /** Full audit response from the backend. */
 export interface AuditResponse {
-  input_type: "image" | "url" | "camera";
+  input_type: "image" | "url" | "camera" | "multi_shot";
   source_url?: string;
   platform?: string;
-  stage: string;
-  error: string | null;
+  stage?: string;
+  error?: string | null;
   listing_data?: Record<string, unknown>;
   extractions: PackagingExtractions;
   verdict: AuditVerdict | null;
@@ -123,6 +157,15 @@ export interface AuditResponse {
   reason?: string;
   guidance?: string;
   image_assessment?: Record<string, unknown>;
+  shots_count?: number;
+  shots_metadata?: ShotMetadata[];
+  stage1_economics?: Stage1Economics;
+  coverage_percent?: number;
+  needs_model_escalation?: boolean;
+  barcode_text?: string | null;
+  parse_result?: Record<string, unknown>;
+  checks?: Array<Record<string, unknown>>;
+  summary?: Record<string, unknown>;
 }
 
 /** Health check response. */
@@ -233,6 +276,31 @@ export async function auditImage(file: File): Promise<AuditResponse> {
     }
     console.warn("Cloud backend unreachable, running statutory client simulation:", err);
     return getFallbackAuditResult("image", file.name);
+  }
+}
+
+/** Submit multi-shot packaging images (Front, Back, Barcode/Price Sticker) for unified LMPC compliance audit. */
+export async function auditMultiShot(shots: MultiShotFiles): Promise<AuditResponse> {
+  try {
+    const formData = new FormData();
+    if (shots.front) formData.append("shot_front", shots.front);
+    if (shots.back) formData.append("shot_back", shots.back);
+    if (shots.barcode) formData.append("shot_barcode", shots.barcode);
+
+    const res = await fetch(`${API_BASE}/api/audit/multi-shot`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Multi-shot packaging audit failed: ${res.status}`);
+    }
+
+    return await res.json();
+  } catch (err: unknown) {
+    console.warn("Multi-shot audit API error, running fallback simulation:", err);
+    return getFallbackAuditResult("image", "Unified Multi-Shot Packaging");
   }
 }
 

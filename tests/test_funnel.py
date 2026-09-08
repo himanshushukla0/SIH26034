@@ -2,6 +2,12 @@
 Unit & Integration Tests for the SIH26034 5-Stage Compliance Funnel Engine
 """
 
+import os
+import sys
+
+# Ensure workspace root is in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import unittest
 from backend.agents.compliance_funnel import (
     ArtworkDedupCache,
@@ -177,3 +183,33 @@ def test_pilot_dataset_integrity():
     assert PILOT_SLICE_INFO["cost_curve"]["blended_average_cost_per_sku_inr"] < 0.05
     assert len(EVALUATION_BENCHMARK_RESULTS["per_field_metrics"]) >= 7
     assert EVALUATION_BENCHMARK_RESULTS["macro_f1_score"] >= 95.0
+
+
+if __name__ == "__main__":
+    tests = [
+        ("test_dhash_and_hamming_distance", test_dhash_and_hamming_distance),
+        ("test_artwork_dedup_cache", test_artwork_dedup_cache),
+        ("test_unit_sale_price_math", test_unit_sale_price_math),
+        ("test_si_units_validation", test_si_units_validation),
+        ("test_mrp_format_check", test_mrp_format_check),
+        ("test_risk_scoring_calculation", test_risk_scoring_calculation),
+        ("test_pilot_dataset_integrity", test_pilot_dataset_integrity),
+    ]
+    passed = 0
+    failed = 0
+    print("=" * 70)
+    print("SIH26034 Compliance Funnel Test Suite")
+    print("=" * 70)
+    for name, func in tests:
+        try:
+            func()
+            print(f"  PASS: {name}")
+            passed += 1
+        except Exception as e:
+            print(f"  FAIL: {name} -> {e}")
+            failed += 1
+    print("=" * 70)
+    print(f"Results: {passed} passed, {failed} failed")
+    print("=" * 70)
+    if failed > 0:
+        sys.exit(1)

@@ -309,7 +309,7 @@ def parse_label(ocr_input: Union[str, Dict[str, Any], Any]) -> LabelParseResult:
     origin_field = None
     for line in lines:
         m = RE_ORIGIN.search(line)
-        if m:
+        if m and m.group(1).strip():
             origin_field = ParsedField(
                 value=m.group(1).strip(),
                 quoted_text=line.strip(),
@@ -436,6 +436,24 @@ def parse_label(ocr_input: Union[str, Dict[str, Any], Any]) -> LabelParseResult:
                 if m:
                     exp_field = ParsedField(
                         value=m.group(1).strip(),
+                        quoted_text=pair,
+                        confidence=0.82,
+                        stitched=True,
+                    )
+
+            # Stitched Country of Origin
+            if not origin_field:
+                m = RE_ORIGIN.search(pair)
+                if m and m.group(1).strip():
+                    origin_field = ParsedField(
+                        value=m.group(1).strip(),
+                        quoted_text=pair,
+                        confidence=0.82,
+                        stitched=True,
+                    )
+                elif "made in india" in pair.lower() or "product of india" in pair.lower():
+                    origin_field = ParsedField(
+                        value="India",
                         quoted_text=pair,
                         confidence=0.82,
                         stitched=True,

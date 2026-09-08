@@ -1,4 +1,4 @@
-# 🏛️ LMPC Compliance Engine (SIH26034)
+# 🏛️ Kraya-Rakshak (क्रय-रक्षक) — SIH26034
 **Automated Verification of Mandatory Declarations on Pre-packaged Commodities under the Legal Metrology (Packaged Commodities) Rules, 2011**
 
 Developed for **Smart India Hackathon (SIH)** — Ministry of Consumer Affairs, Food & Public Distribution (Department of Consumer Affairs).
@@ -6,7 +6,7 @@ Developed for **Smart India Hackathon (SIH)** — Ministry of Consumer Affairs, 
 ---
 
 ## 📌 Project Overview
-The **LMPC Compliance Engine** is an AI-powered automated regulatory auditor and multi-agent system designed to inspect product packaging images and e-commerce product listings for mandatory declarations under the Legal Metrology Act, 2009 and LMPC Rules, 2011.
+**Kraya-Rakshak (क्रय-रक्षक)** is an AI-powered automated regulatory compliance engine and multi-agent system designed to inspect product packaging images (with multi-shot panel capture) and e-commerce listings for mandatory declarations under the Legal Metrology Act, 2009 and LMPC Rules, 2011.
 
 ### 🌟 Key Features
 - **Multimodal Vision & OCR Pipeline**: Principal Display Panel (PDP) segmentation, font height verification in mm, contrast analysis, and text extraction.

@@ -26,7 +26,7 @@ import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import LiveScanner from "./components/LiveScanner";
 import VerificationReport from "./components/VerificationReport";
 import FunnelWorklistDashboard from "./components/FunnelWorklistDashboard";
-import { auditImage, auditUrl } from "./api";
+import { auditImage, auditUrl, auditMultiShot } from "./api";
 import type { AuditResponse } from "./api";
 import { getFallbackAuditResult } from "./utils/demoData";
 import {
@@ -146,6 +146,25 @@ export default function App() {
 
     try {
       const res = await auditImage(file);
+      setResult(res);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+      setLoadingStage("");
+    }
+  };
+
+  /** Handle multi-shot packaging capture audit (Front + Back + Barcode). */
+  const handleMultiShotAudit = async (shots: { front?: File | null; back?: File | null; barcode?: File | null }) => {
+    setError(null);
+    setResult(null);
+    setIsLoading(true);
+    setLoadingStage("Unifying multi-shot packaging panels & running Stage 1 Screener...");
+
+    try {
+      const res = await auditMultiShot(shots);
       setResult(res);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error";
@@ -597,7 +616,11 @@ export default function App() {
                         </div>
                       </div>
                     </div>
-                    <ImageUploader onFileSelect={handleImageAudit} isLoading={false} />
+                    <ImageUploader
+                      onFileSelect={handleImageAudit}
+                      onMultiShotSelect={handleMultiShotAudit}
+                      isLoading={isLoading}
+                    />
                   </>
                 ) : (
                   <>
@@ -982,6 +1005,9 @@ export default function App() {
                   listingData={result.listing_data}
                   platform={result.platform}
                   sourceUrl={result.source_url}
+                  shotsMetadata={result.shots_metadata}
+                  stage1Economics={result.stage1_economics}
+                  inputType={result.input_type}
                 />
 
                 {result.verification && (
@@ -1017,7 +1043,7 @@ export default function App() {
               <LmpcBrandLogo />
               <div>
                 <div style={{ color: "#fff", fontWeight: 800, fontSize: "0.92rem", lineHeight: "1.2" }}>
-                  LMPC Compliance Engine
+                  Kraya-Rakshak (क्रय-रक्षक)
                 </div>
                 <div style={{ color: "var(--brand)", fontSize: "0.72rem", fontWeight: 700 }}>
                   {t("footer_prototype_title")}
