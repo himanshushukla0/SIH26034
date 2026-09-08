@@ -694,6 +694,215 @@ export default function App() {
               </motion.div>
             )}
 
+            {/* --- Statutory Image Gate Refusal Notice --- */}
+            {result &&
+              (result.status === "REFUSED" ||
+                result.audit_status === "REFUSED" ||
+                (!result.verdict && (result.reason || result.error))) &&
+              !isLoading && (
+                <motion.div
+                  key="refusal"
+                  className="gov-card"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    padding: "2rem",
+                    borderLeft: "5px solid #dc2626",
+                    marginBottom: "2rem",
+                    background: "#ffffff",
+                    boxShadow: "0 4px 16px rgba(220, 38, 38, 0.08)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "1.2rem",
+                      marginBottom: "1.25rem",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "52px",
+                        height: "52px",
+                        borderRadius: "12px",
+                        background: "rgba(220, 38, 38, 0.1)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <ShieldAlert size={30} color="#dc2626" />
+                    </div>
+                    <div style={{ flex: 1, minWidth: "260px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          flexWrap: "wrap",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        <span
+                          className="badge-critical"
+                          style={{
+                            background: "#fee2e2",
+                            color: "#b91c1c",
+                            fontWeight: 700,
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                            fontSize: "0.75rem",
+                          }}
+                        >
+                          STATUTORY GATE REFUSAL • SECTION 18(1)
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "var(--text-muted)",
+                            fontFamily: "var(--font-mono)",
+                          }}
+                        >
+                          Legal Metrology (Packaged Commodities) Rules, 2011
+                        </span>
+                      </div>
+                      <h3
+                        style={{
+                          fontSize: "1.3rem",
+                          fontWeight: 800,
+                          color: "#991b1b",
+                          margin: "4px 0 2px 0",
+                        }}
+                      >
+                        Statutory Inspection Refused: Packaging Not Detected
+                      </h3>
+                      <p
+                        style={{
+                          fontSize: "0.85rem",
+                          color: "var(--text-secondary)",
+                          margin: 0,
+                        }}
+                      >
+                        विधिक मापविज्ञान अधिनियम, 2009 — पैकेजिंग एवं अनिवार्य घोषणाओं का अभाव
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      background: "#fef2f2",
+                      border: "1px solid #fecaca",
+                      borderRadius: "8px",
+                      padding: "1.1rem 1.25rem",
+                      marginBottom: "1.25rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        fontSize: "0.9rem",
+                        color: "#991b1b",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      ⚠️ Reason for Statutory Gate Refusal:
+                    </div>
+                    <p
+                      style={{
+                        fontSize: "0.9rem",
+                        color: "#7f1d1d",
+                        lineHeight: 1.55,
+                        margin: 0,
+                      }}
+                    >
+                      {result.reason ||
+                        result.error ||
+                        "No legible printed declaration text or barcode could be located in this frame. The captured frame appears to show a human hand, person, or non-packaging surface rather than pre-packaged commodity statutory declarations."}
+                    </p>
+                  </div>
+
+                  <div
+                    style={{
+                      background: "#f8fafc",
+                      border: "1px solid var(--border-card)",
+                      borderRadius: "8px",
+                      padding: "1rem 1.25rem",
+                      marginBottom: "1.5rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        fontSize: "0.88rem",
+                        color: "var(--gov-navy-dark)",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      📌 Official Statutory Guidance for Field Officer / Inspector:
+                    </div>
+                    <p
+                      style={{
+                        fontSize: "0.86rem",
+                        color: "var(--text-secondary)",
+                        lineHeight: 1.5,
+                        margin: 0,
+                      }}
+                    >
+                      {result.guidance ||
+                        "Position the physical package label flat within the viewfinder under adequate lighting, or scan the 1D retail barcode (EAN-13 / UPC) on the back panel. Pre-packaged commodity declarations (MRP, Net Quantity, Manufacturer details) must be legible to conduct verification."}
+                    </p>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                    }}
+                  >
+                    <button
+                      className="btn-gov-primary"
+                      onClick={handleReset}
+                      style={{
+                        padding: "0.65rem 1.25rem",
+                        fontSize: "0.88rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <RotateCw size={16} />
+                      <span>Re-activate Live Scanner</span>
+                    </button>
+                    <button
+                      className="btn-gov-secondary"
+                      onClick={() => handleQuickDemo("compliant")}
+                      style={{ padding: "0.65rem 1.25rem", fontSize: "0.88rem" }}
+                    >
+                      <span>Test Compliant Sample (Tata Tea 500g)</span>
+                    </button>
+                    <button
+                      className="btn-gov-secondary"
+                      onClick={() => handleQuickDemo("violation")}
+                      style={{ padding: "0.65rem 1.25rem", fontSize: "0.88rem" }}
+                    >
+                      <span>Test Violation Sample (Masala Pouch)</span>
+                    </button>
+                    <button
+                      className="btn-gov-secondary"
+                      onClick={() => handleQuickDemo("imported")}
+                      style={{ padding: "0.65rem 1.25rem", fontSize: "0.88rem" }}
+                    >
+                      <span>Test Imported Sample (Swiss Cocoa)</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
             {/* --- Results --- */}
             {result?.verdict && !isLoading && (
               <motion.div

@@ -118,6 +118,11 @@ export interface AuditResponse {
   verification?: PackageAuthenticityVerdict | null;
   audit_id?: string;
   report_url?: string;
+  status?: string;
+  audit_status?: string;
+  reason?: string;
+  guidance?: string;
+  image_assessment?: Record<string, unknown>;
 }
 
 /** Health check response. */
@@ -177,11 +182,55 @@ export async function auditImage(file: File): Promise<AuditResponse> {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
+      // Preserve statutory Image Gate refusals (HTTP 422 or explicit refusal)
+      if (res.status === 422 || err.status === "REFUSED" || err.audit_status === "REFUSED") {
+        return {
+          input_type: "image",
+          stage: "completed",
+          status: "REFUSED",
+          audit_status: "REFUSED",
+          error: err.detail || err.error || "Image refused by statutory Image Gate.",
+          reason: err.detail || err.reason || "The image does not show pre-packaged commodity declarations.",
+          guidance: err.guidance || "Photograph the declaration panel of the package and tap to focus.",
+          image_assessment: err.image_assessment || err.image,
+          extractions: {},
+          verdict: null,
+        };
+      }
       throw new Error(err.detail || `Audit failed: ${res.status}`);
     }
 
-    return await res.json();
-  } catch (err) {
+    const data = await res.json();
+    if (data.status === "REFUSED" || data.audit_status === "REFUSED") {
+      return {
+        input_type: "image",
+        stage: "completed",
+        status: "REFUSED",
+        audit_status: "REFUSED",
+        error: data.error || data.reason || data.detail,
+        reason: data.reason || data.detail || "The image does not show pre-packaged commodity declarations.",
+        guidance: data.guidance || "Photograph the declaration panel of the package and tap to focus.",
+        image_assessment: data.image_assessment || data.image,
+        extractions: {},
+        verdict: null,
+      };
+    }
+    return data;
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (errMsg.includes("Image refused") || errMsg.includes("not show") || errMsg.includes("REFUSED")) {
+      return {
+        input_type: "image",
+        stage: "completed",
+        status: "REFUSED",
+        audit_status: "REFUSED",
+        error: errMsg,
+        reason: errMsg,
+        guidance: "Photograph the declaration panel of the package and tap to focus.",
+        extractions: {},
+        verdict: null,
+      };
+    }
     console.warn("Cloud backend unreachable, running statutory client simulation:", err);
     return getFallbackAuditResult("image", file.name);
   }
@@ -229,13 +278,57 @@ export async function scanPackage(
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
+      // Preserve statutory Image Gate refusals (HTTP 422 or explicit refusal)
+      if (res.status === 422 || err.status === "REFUSED" || err.audit_status === "REFUSED") {
+        return {
+          input_type: "camera",
+          stage: "completed",
+          status: "REFUSED",
+          audit_status: "REFUSED",
+          error: err.detail || err.error || "Frame refused by statutory Image Gate.",
+          reason: err.detail || err.reason || "The frame does not show pre-packaged commodity declarations.",
+          guidance: err.guidance || "Align the packaging Principal Display Panel or barcode in the camera frame.",
+          image_assessment: err.image_assessment || err.image,
+          extractions: {},
+          verdict: null,
+        };
+      }
       throw new Error(err.detail || `Scan failed: ${res.status}`);
     }
 
-    return await res.json();
-  } catch (err) {
+    const data = await res.json();
+    if (data.status === "REFUSED" || data.audit_status === "REFUSED") {
+      return {
+        input_type: "camera",
+        stage: "completed",
+        status: "REFUSED",
+        audit_status: "REFUSED",
+        error: data.error || data.reason || data.detail,
+        reason: data.reason || data.detail || "The frame does not show pre-packaged commodity declarations.",
+        guidance: data.guidance || "Align the packaging Principal Display Panel or barcode in the camera frame.",
+        image_assessment: data.image_assessment || data.image,
+        extractions: {},
+        verdict: null,
+      };
+    }
+    return data;
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (errMsg.includes("refused") || errMsg.includes("not show") || errMsg.includes("REFUSED")) {
+      return {
+        input_type: "camera",
+        stage: "completed",
+        status: "REFUSED",
+        audit_status: "REFUSED",
+        error: errMsg,
+        reason: errMsg,
+        guidance: "Align the packaging Principal Display Panel or barcode in the camera frame.",
+        extractions: {},
+        verdict: null,
+      };
+    }
     console.warn("Cloud backend unreachable, running statutory client simulation:", err);
-    return getFallbackAuditResult("camera", barcode || "Scanned Commodity");
+    return getFallbackAuditResult("camera", barcode || "");
   }
 }
 

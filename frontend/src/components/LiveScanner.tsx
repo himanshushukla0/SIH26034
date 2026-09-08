@@ -275,6 +275,8 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
             Html5QrcodeSupportedFormats.CODE_39,
             Html5QrcodeSupportedFormats.UPC_A,
             Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.ITF,
+            Html5QrcodeSupportedFormats.CODABAR,
             Html5QrcodeSupportedFormats.QR_CODE,
             Html5QrcodeSupportedFormats.DATA_MATRIX,
           ],
@@ -285,14 +287,14 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
         });
         scannerRef.current = scanner;
 
-        // Targeted horizontal qrbox specifically optimized for 1D barcodes
+        // Generous viewport accommodating 1D barcodes horizontally, tilted, and 2D QR codes
         const scanConfig = {
-          fps: 12, // 12-15 fps leaves CPU bandwidth for crisp decoding
+          fps: 15,
           aspectRatio: 16 / 9,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const w = Math.min(Math.floor(viewfinderWidth * 0.88), 460);
-            const h = Math.min(Math.floor(viewfinderHeight * 0.45), 180);
-            return { width: Math.max(w, 240), height: Math.max(h, 90) };
+            const w = Math.min(Math.floor(viewfinderWidth * 0.92), 560);
+            const h = Math.min(Math.floor(viewfinderHeight * 0.65), 320);
+            return { width: Math.max(w, 240), height: Math.max(h, 150) };
           },
           videoConstraints: {
             facingMode: { ideal: "environment" },
@@ -437,17 +439,18 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
     playScanSuccessFeedback();
 
     let capturedBlob: Blob | null = null;
+    let canvasElem: HTMLCanvasElement | null = null;
     try {
       const videoElem = videoContainerRef.current?.querySelector("video") as HTMLVideoElement | null;
       if (videoElem && videoElem.videoWidth > 0) {
-        const canvas = document.createElement("canvas");
-        canvas.width = videoElem.videoWidth;
-        canvas.height = videoElem.videoHeight;
-        const ctx = canvas.getContext("2d");
+        canvasElem = document.createElement("canvas");
+        canvasElem.width = videoElem.videoWidth;
+        canvasElem.height = videoElem.videoHeight;
+        const ctx = canvasElem.getContext("2d");
         if (ctx) {
           ctx.drawImage(videoElem, 0, 0);
           capturedBlob = await new Promise<Blob | null>((resolve) => {
-            canvas.toBlob((b) => resolve(b), "image/jpeg", 0.95);
+            canvasElem!.toBlob((b) => resolve(b), "image/jpeg", 0.95);
           });
         }
       }
@@ -464,10 +467,108 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
     }
     setIsScanning(false);
 
-    if (capturedBlob) {
+    if (capturedBlob && canvasElem) {
       const file = new File([capturedBlob], "inspection-capture.jpg", { type: "image/jpeg" });
       setIsProcessing(true);
       setScanStatus("processing");
+      setProcessingStage(lang === "hi" ? "कैप्चर किए गए फ्रेम में बारकोड की उच्च-रिज़ॉल्यूशन खोज..." : "High-resolution barcode inspection on captured frame...");
+
+      // 1. High-resolution barcode detection on captured frame
+      let decodedBarcode: string | null = null;
+      try {
+        if (nativeDetectorRef.current) {
+          const detected = await nativeDetectorRef.current.detect(canvasElem);
+          if (detected && detected.length > 0 && detected[0].rawValue) {
+            decodedBarcode = String(detected[0].rawValue).trim();
+          }
+        }
+      } catch {
+        // Native detection skip
+      }
+
+      if (!decodedBarcode && scannerRef.current) {
+        try {
+          decodedBarcode = await scannerRef.current.scanFile(file, false);
+        } catch {
+          // File scan miss
+        }
+      }
+
+      // If a barcode was found in the captured frame, run tailored statutory verification!
+      if (decodedBarcode) {
+        setLastBarcode(decodedBarcode);
+        await runVerification(decodedBarcode, capturedBlob);
+        return;
+      }
+
+      // 2. Client-side Image Gate pre-check: test for hand / skin-tone / featureless frame
+      let isHandOrNonPackaging = false;
+      try {
+        const ctx = canvasElem.getContext("2d");
+        if (ctx) {
+          const sampleW = Math.min(canvasElem.width, 160);
+          const sampleH = Math.min(canvasElem.height, 160);
+          const imgData = ctx.getImageData(0, 0, sampleW, sampleH);
+          const data = imgData.data;
+          let diffSum = 0;
+          let skinPixels = 0;
+          const totalPixels = sampleW * sampleH;
+
+          for (let i = 0; i < data.length - 4; i += 4) {
+            const r = data[i], g = data[i + 1], b = data[i + 2];
+            const nextR = data[i + 4], nextG = data[i + 5], nextB = data[i + 6];
+            diffSum += Math.abs(r - nextR) + Math.abs(g - nextG) + Math.abs(b - nextB);
+
+            // Perceptual human skin tone filter (RGB color space)
+            if (
+              r > 95 &&
+              g > 40 &&
+              b > 20 &&
+              Math.max(r, g, b) - Math.min(r, g, b) > 15 &&
+              Math.abs(r - g) > 15 &&
+              r > g &&
+              r > b
+            ) {
+              skinPixels++;
+            }
+          }
+
+          const avgVariation = diffSum / (totalPixels * 3);
+          const skinFrac = skinPixels / totalPixels;
+
+          // If frame is dominated by skin-tone with low edge variation, refuse immediately
+          if (skinFrac > 0.50 && avgVariation < 14) {
+            isHandOrNonPackaging = true;
+          }
+        }
+      } catch {
+        // Canvas analysis fallback
+      }
+
+      if (isHandOrNonPackaging) {
+        setIsProcessing(false);
+        processingLockRef.current = false;
+        setScanStatus("error");
+        onScanComplete({
+          input_type: "camera",
+          stage: "completed",
+          status: "REFUSED",
+          audit_status: "REFUSED",
+          error: "No pre-packaged commodity barcode or statutory declarations detected.",
+          reason: "The captured frame appears to show a human hand or person, not pre-packaged commodity packaging. Section 18(1) compliance audits require visible statutory declarations (MRP, Net Quantity, Manufacturer details) or an authentic barcode.",
+          guidance: "Please hold the physical product package or barcode directly within the reticle under clear lighting.",
+          image_assessment: {
+            status: "CONTAINS_PERSON_OR_HAND",
+            usable: false,
+            reason: "High skin-fraction detected; no packaging declarations found.",
+          },
+          extractions: {},
+          verdict: null,
+        });
+        return;
+      }
+
+      // 3. Frame has printed content or contrast: forward to statutory multimodal vision pipeline
       setProcessingStage(lang === "hi" ? "कैप्चर किए गए लेबल पर जेमिनी मल्टीमॉडल ओसीआर विश्लेषण..." : "Running Gemini Multimodal OCR on captured label...");
       try {
         const auditResult = await auditImage(file);
@@ -484,7 +585,7 @@ export default function LiveScanner({ onScanComplete, onError }: LiveScannerProp
     } else {
       processingLockRef.current = false;
     }
-  }, [lang, onScanComplete, onError]);
+  }, [lang, onScanComplete, onError, runVerification]);
 
   /** Handle file upload scan for barcodes and packaging photos. */
   const handleFileScan = useCallback(

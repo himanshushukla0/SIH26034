@@ -977,10 +977,32 @@ export function getFallbackAuditResult(
     return generateDynamicBarcodeAudit(numbersOnly, inputType);
   }
 
-  // 4. Default: If query contains "non" or "fail", return violation sample; otherwise Tata Tea
-  if (qLower.includes("non") || qLower.includes("fail") || qLower.includes("notice")) {
+  // 4. Test Demo Samples by explicit keyword
+  if (qLower.includes("compliant") || qLower.includes("sample_compliant")) {
+    return getFallbackAuditResult(inputType, "8901030383478");
+  }
+  if (qLower.includes("non") || qLower.includes("fail") || qLower.includes("notice") || qLower.includes("violation")) {
     return getFallbackAuditResult(inputType, "8909999999999");
   }
 
-  return getFallbackAuditResult(inputType, "8901030383478");
+  // 5. Statutory Image Gate Refusal: Unrecognized non-packaging frames, hands, or blank images
+  // must NEVER be certified as Tata Tea or any compliant commodity.
+  return {
+    input_type: inputType,
+    stage: "completed",
+    status: "REFUSED",
+    audit_status: "REFUSED",
+    error: "No pre-packaged commodity barcode or statutory declarations detected.",
+    reason: "No legible printed declaration text or barcode could be located in this frame. The captured image appears to show a hand, person, or non-packaging surface rather than pre-packaged commodity statutory declarations under Legal Metrology Rules.",
+    guidance: "Please point the camera directly at the product's barcode or Principal Display Panel (PDP) carrying the MRP and net quantity under good lighting.",
+    image_assessment: {
+      status: "NOT_A_LABEL",
+      usable: false,
+      reason: "No legible printed declarations or barcode located.",
+      guidance: "Photograph the declaration panel or barcode of the package.",
+    },
+    extractions: {},
+    verdict: null,
+    verification: null,
+  };
 }
