@@ -14,6 +14,7 @@ import {
   ExternalLink,
   ShieldAlert,
   Scale,
+  Filter,
 } from "lucide-react";
 
 import "./styles/globals.css";
@@ -24,6 +25,7 @@ import AuditReport from "./components/AuditReport";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import LiveScanner from "./components/LiveScanner";
 import VerificationReport from "./components/VerificationReport";
+import FunnelWorklistDashboard from "./components/FunnelWorklistDashboard";
 import { auditImage, auditUrl } from "./api";
 import type { AuditResponse } from "./api";
 import { getFallbackAuditResult } from "./utils/demoData";
@@ -35,7 +37,7 @@ import {
 import { useLanguage } from "./context/LanguageContext";
 import { playScanSuccessFeedback } from "./utils/hapticsAndSound";
 
-type TabKey = "livescan" | "scanner" | "url" | "analytics";
+type TabKey = "livescan" | "funnel" | "scanner" | "url" | "analytics";
 
 /** Legal Metrology AI Emblem / Scale & Shield Brand Logo */
 function LmpcBrandLogo() {
@@ -357,6 +359,17 @@ export default function App() {
             {t("tab_livescan")}
           </button>
           <button
+            className={`tab-btn ${activeTab === "funnel" ? "active" : ""}`}
+            onClick={() => {
+              setActiveTab("funnel");
+              handleReset();
+            }}
+            id="tab-funnel"
+          >
+            <Filter size={16} />
+            Funnel & Worklist
+          </button>
+          <button
             className={`tab-btn ${activeTab === "scanner" ? "active" : ""}`}
             onClick={() => {
               setActiveTab("scanner");
@@ -485,8 +498,20 @@ export default function App() {
           </motion.div>
         )}
 
+        {/* --- 5-Stage Funnel & Officer Worklist Tab --- */}
+        {activeTab === "funnel" && (
+          <motion.div
+            key="funnel-view"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <FunnelWorklistDashboard />
+          </motion.div>
+        )}
+
         {/* --- Scanner, Upload & URL Tabs --- */}
-        {activeTab !== "analytics" && (
+        {activeTab !== "analytics" && activeTab !== "funnel" && (
           <AnimatePresence mode="wait">
             {/* Input Section */}
             {!result && !isLoading && (

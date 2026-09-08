@@ -542,3 +542,178 @@ export async function draftStatutoryNotice(req: DraftNoticeRequest): Promise<Sta
   }
 }
 
+// ---------------------------------------------------------------------------
+// SIH 5-Stage Funnel, Officer Worklist, Benchmark & Clearance APIs
+// ---------------------------------------------------------------------------
+
+export interface FunnelStatsResponse {
+  pilot_slice: {
+    pilot_name: string;
+    category: string;
+    jurisdiction: string;
+    cadre_context: {
+      designated_officers: number;
+      food_safety_officers: number;
+      legal_metrology_inspectors: number;
+      estimated_active_food_skus_in_state: number;
+      annual_manual_inspections_capacity: number;
+    };
+    funnel_metrics: {
+      total_screened_skus: number;
+      stage_0_dedup_hits: number;
+      stage_0_dedup_percent: number;
+      stage_1_deterministic_flags: number;
+      stage_1_deterministic_percent: number;
+      stage_2_local_ocr_processed: number;
+      stage_2_percent: number;
+      stage_3_multimodal_vision_cases: number;
+      stage_3_percent: number;
+      stage_4_officer_worklist_items: number;
+      stage_4_percent: number;
+      dedup_artwork_cache_hit_rate: number;
+    };
+    cost_curve: {
+      stage_0_cost_per_sku_inr: number;
+      stage_1_cost_per_sku_inr: number;
+      stage_2_cost_per_sku_inr: number;
+      stage_3_cost_per_sku_inr: number;
+      total_compute_cost_inr: number;
+      blended_average_cost_per_sku_inr: number;
+      equivalent_manual_inspection_cost_inr: number;
+      taxpayer_cost_savings_inr: number;
+      cost_efficiency_multiplier: number;
+    };
+    national_extrapolation: {
+      national_packaged_food_skus: number;
+      annual_screening_cost_inr: number;
+      annual_officer_time_multiplier: number;
+      pitch_takeaway: string;
+    };
+    top_5_violated_clauses: Array<{
+      rank: number;
+      clause: string;
+      section: string;
+      occurrences: number;
+      frequency_percent: number;
+      root_cause: string;
+    }>;
+  };
+  runtime_dedup_cache: {
+    total_screened: number;
+    dedup_cache_hits: number;
+    dedup_hit_rate_percent: number;
+  };
+}
+
+export interface OfficerWorklistItem {
+  id: string;
+  sku_id: string;
+  gtin: string;
+  product_name: string;
+  brand: string;
+  category: string;
+  jurisdiction: string;
+  risk_score: number;
+  priority_level: "HIGH" | "MEDIUM" | "LOW";
+  evidentiary_class: "RULE_6_10_ECOMMERCE" | "OFFICER_INSPECTION_EVIDENCE" | "CROWDSOURCED_LEAD";
+  evidentiary_description: string;
+  violations: Array<{
+    rule_id: string;
+    clause: string;
+    severity: string;
+    description: string;
+  }>;
+  top_violation_clause: string;
+  statutory_action: string;
+  estimated_penalty_inr: number;
+  draft_notice_ready: boolean;
+  assigned_officer?: string;
+  created_at?: string;
+}
+
+export interface EvaluationBenchmarkResponse {
+  benchmark_name: string;
+  dataset_size: number;
+  categories_represented: string[];
+  macro_f1_score: number;
+  average_inference_latency_ms: number;
+  per_field_metrics: Array<{
+    field_name: string;
+    statutory_rule: string;
+    ground_truth_samples: number;
+    true_positives: number;
+    false_positives: number;
+    false_negatives: number;
+    precision_percent: number;
+    recall_percent: number;
+    f1_score: number;
+  }>;
+}
+
+export interface PreprintClearanceResponse {
+  clearance_status: "APPROVED" | "REJECTED_NEEDS_REVISION";
+  certificate_id?: string;
+  gtin: string;
+  product_name: string;
+  brand_name: string;
+  artwork_hash: string;
+  inspection_deprioritization: boolean;
+  incentive_trade: string;
+  failures: Array<{
+    rule_id: string;
+    clause: string;
+    severity: string;
+    description: string;
+  }>;
+  execution_time_ms: number;
+}
+
+/** Fetch 5-Stage Funnel throughput, cost curve and national extrapolation data. */
+export async function getFunnelStats(): Promise<FunnelStatsResponse> {
+  const response = await fetch(`${API_BASE}/api/funnel/stats`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch funnel stats: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/** Fetch ranked officer worklist prioritized by FSSAI-aligned risk score. */
+export async function getOfficerWorklist(filters?: {
+  jurisdiction?: string;
+  evidentiary_class?: string;
+  min_priority?: string;
+}): Promise<{ total_items: number; items: OfficerWorklistItem[] }> {
+  const query = new URLSearchParams();
+  if (filters?.jurisdiction) query.set("jurisdiction", filters.jurisdiction);
+  if (filters?.evidentiary_class) query.set("evidentiary_class", filters.evidentiary_class);
+  if (filters?.min_priority) query.set("min_priority", filters.min_priority);
+
+  const response = await fetch(`${API_BASE}/api/funnel/officer-worklist?${query.toString()}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch officer worklist: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/** Fetch 200-item labelled evaluation benchmark metrics (Precision/Recall/F1 per field). */
+export async function getEvaluationBenchmark(): Promise<EvaluationBenchmarkResponse> {
+  const response = await fetch(`${API_BASE}/api/funnel/benchmark`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch evaluation benchmark: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/** Submit manufacturer artwork for Pre-Print Clearance. */
+export async function submitPreprintClearance(
+  formData: FormData
+): Promise<PreprintClearanceResponse> {
+  const response = await fetch(`${API_BASE}/api/funnel/clearance`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to submit pre-print clearance: ${response.statusText}`);
+  }
+  return response.json();
+}

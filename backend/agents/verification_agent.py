@@ -1205,9 +1205,12 @@ class VerificationAgent:
         import uuid
         from backend.agents.lmpc_evaluator import lmpc_evaluator
 
+        # CRITICAL FIX: None barcode means no barcode was detected on the image.
+        # In that case we MUST rely exclusively on Gemini Vision — do NOT fall
+        # back to a hardcoded barcode that would pull the wrong product from the
+        # catalog and poison the compliance report with Tata Tea Gold values.
+        no_barcode = barcode is None or str(barcode).strip() == ""
         clean_code = re.sub(r"[^\d]", "", str(barcode or ""))
-        if not clean_code:
-            clean_code = "8901030383478"
 
         # 1. Expand Reference Catalogue with authentic Indian FMCG products
         BARCODE_CATALOG: dict[str, dict[str, Any]] = {
@@ -1610,20 +1613,34 @@ class VerificationAgent:
                 logger.info("👁️ Running Gemini multimodal vision on package image (%d bytes)", len(image_bytes))
                 raw_vision = await vision_agent.extract_from_image(image_bytes=image_bytes)
                 if isinstance(raw_vision, dict) and raw_vision:
-                    # Validate that vision found actual printed text
+                    # Validate that vision found actual printed text (any meaningful field)
                     p_name_val = raw_vision.get("product_name", {}).get("value") if isinstance(raw_vision.get("product_name"), dict) else raw_vision.get("product_name")
                     mrp_val = raw_vision.get("mrp", {}).get("value") if isinstance(raw_vision.get("mrp"), dict) else raw_vision.get("mrp")
-                    if p_name_val or mrp_val:
+                    mfg_val = raw_vision.get("manufacturer_name", {}).get("value") if isinstance(raw_vision.get("manufacturer_name"), dict) else raw_vision.get("manufacturer_name")
+                    net_val = raw_vision.get("net_quantity", {}).get("value") if isinstance(raw_vision.get("net_quantity"), dict) else raw_vision.get("net_quantity")
+                    if p_name_val or mrp_val or mfg_val or net_val:
                         vision_extractions = raw_vision
-                        logger.info("✅ Gemini Vision successfully extracted packaging text: name=%s, mrp=%s", p_name_val, mrp_val)
+                        logger.info(
+                            "✅ Gemini Vision extracted packaging text: name=%s, mrp=%s, mfg=%s, qty=%s",
+                            p_name_val, mrp_val, mfg_val, net_val
+                        )
+                    else:
+                        logger.warning("⚠️ Gemini Vision returned a dict but all key fields are null — ignoring vision output")
             except Exception as e:
                 logger.warning("Gemini Vision extraction from image_bytes encountered error: %s", e)
 
-        # 3. Lookup or Synthesize Reference Data for this Barcode
-        prod_data = BARCODE_CATALOG.get(clean_code)
+        # 3. Lookup Reference Data for this Barcode
+        # CRITICAL: If no barcode was detected, skip ALL catalog and synthetic lookups.
+        # In that case Gemini Vision is the ONLY valid data source.
+        if no_barcode:
+            # Pure vision-only path — catalog is irrelevant
+            prod_data = None
+            logger.info("ℹ️ No barcode detected — running vision-only audit (catalog bypassed)")
+        else:
+            prod_data = BARCODE_CATALOG.get(clean_code)
 
-        # Try Open Food Facts API if not in reference catalog
-        if not prod_data:
+        # Try Open Food Facts API if not in reference catalog (only when a real barcode exists)
+        if not no_barcode and not prod_data:
             try:
                 url = f"https://world.openfoodfacts.org/api/v2/product/{clean_code}.json"
                 res = await self._http_client.get(url, timeout=3.0)
@@ -1751,36 +1768,95 @@ class VerificationAgent:
                     "additional_declarations": [f"FSSAI Lic No: 100{fssai_state}01000{suffix}"],
                 }
 
-        # 4. STRUCTURE FINAL EXTRACTIONS (Prioritizing Gemini Vision if available)
+        # 4. STRUCTURE FINAL EXTRACTIONS
+        # Priority order:
+        #   1. Gemini Vision (confidence >= 0.55) — always wins when available
+        #   2. Catalog / Open Food Facts / GS1 synthesized data
+        #   3. null  (field genuinely not found)
         extractions: dict[str, Any] = {}
 
+        # Minimum confidence from Gemini for a value to be accepted over catalog
+        VISION_CONFIDENCE_THRESHOLD = 0.55
+
         def resolve_field(key: str, default_val: Any, default_conf: float = 0.95) -> dict[str, Any]:
+            """Return vision data when confident enough, otherwise catalog fallback."""
             if vision_extractions and key in vision_extractions:
                 entry = vision_extractions[key]
-                if isinstance(entry, dict) and entry.get("value") is not None:
-                    return {"value": entry.get("value"), "confidence": float(entry.get("confidence", 0.92))}
-                elif entry is not None and not isinstance(entry, dict):
-                    return {"value": entry, "confidence": 0.90}
-            return {"value": default_val, "confidence": default_conf if default_val is not None else 0.0}
+                if isinstance(entry, dict):
+                    v_val = entry.get("value")
+                    v_conf = float(entry.get("confidence", 0.0))
+                    # Accept vision value if it's non-null and confidence is acceptable
+                    if v_val is not None and v_conf >= VISION_CONFIDENCE_THRESHOLD:
+                        return {"value": v_val, "confidence": v_conf, "source": "vision"}
+                    # Low-confidence vision value — fall through to catalog
+                    elif v_val is not None and v_conf > 0:
+                        logger.debug(
+                            "Field '%s': vision value '%s' has low confidence (%.2f < %.2f) — using catalog fallback",
+                            key, v_val, v_conf, VISION_CONFIDENCE_THRESHOLD
+                        )
+                elif entry is not None:
+                    # Non-dict vision value (raw string/number)
+                    return {"value": entry, "confidence": 0.90, "source": "vision"}
+            # Vision not available or below threshold — use catalog/synthesized value
+            return {
+                "value": default_val,
+                "confidence": default_conf if default_val is not None else 0.0,
+                "source": "catalog" if default_val is not None else "missing",
+            }
 
-        extractions["product_name"] = resolve_field("product_name", prod_data["product_name"], 0.98)
-        extractions["manufacturer_name"] = resolve_field("manufacturer_name", prod_data["manufacturer_name"], 0.98)
-        extractions["manufacturer_address"] = resolve_field("manufacturer_address", prod_data["manufacturer_address"], 0.95)
-        extractions["country_of_origin"] = resolve_field("country_of_origin", prod_data.get("country_of_origin"), 0.99)
-        extractions["generic_name"] = resolve_field("generic_name", prod_data["generic_name"], 0.95)
-        extractions["net_quantity"] = resolve_field("net_quantity", prod_data["net_quantity"], 0.98)
-        extractions["net_quantity_unit"] = resolve_field("net_quantity_unit", prod_data["net_quantity_unit"], 0.98)
-        extractions["net_quantity_value"] = resolve_field("net_quantity_value", prod_data["net_quantity_value"], 0.98)
-        extractions["manufacture_date"] = resolve_field("manufacture_date", prod_data["manufacture_date"], 0.92)
-        extractions["expiry_date"] = resolve_field("expiry_date", prod_data["expiry_date"], 0.92)
-        extractions["mrp"] = resolve_field("mrp", prod_data["mrp"], 0.98)
-        extractions["mrp_includes_taxes"] = resolve_field("mrp_includes_taxes", prod_data.get("mrp_includes_taxes", True), 0.95)
-        extractions["unit_sale_price"] = resolve_field("unit_sale_price", prod_data.get("unit_sale_price"), 0.95)
-        extractions["consumer_care_name"] = resolve_field("consumer_care_name", prod_data.get("consumer_care_name"), 0.90)
-        extractions["consumer_care_phone"] = resolve_field("consumer_care_phone", prod_data.get("consumer_care_phone"), 0.95)
-        extractions["consumer_care_email"] = resolve_field("consumer_care_email", prod_data.get("consumer_care_email"), 0.92)
-        extractions["barcode_number"] = {"value": clean_code, "confidence": 1.0}
-        extractions["additional_declarations"] = prod_data.get("additional_declarations", [])
+        def resolve_vision_only(key: str) -> dict[str, Any]:
+            """For the no-barcode path — return whatever vision says, no catalog fallback."""
+            if vision_extractions and key in vision_extractions:
+                entry = vision_extractions[key]
+                if isinstance(entry, dict):
+                    return {"value": entry.get("value"), "confidence": float(entry.get("confidence", 0.0)), "source": "vision"}
+                elif entry is not None:
+                    return {"value": entry, "confidence": 0.85, "source": "vision"}
+            return {"value": None, "confidence": 0.0, "source": "missing"}
+
+        if no_barcode or prod_data is None:
+            # ── VISION-ONLY PATH ─────────────────────────────────────────────
+            # No barcode was detected. Every field must come from Gemini Vision.
+            # Never inject catalog values — they would belong to a different product.
+            logger.info("🔍 Vision-only audit path — all fields from Gemini extraction")
+            for key in [
+                "product_name", "manufacturer_name", "manufacturer_address",
+                "country_of_origin", "generic_name", "net_quantity",
+                "net_quantity_unit", "net_quantity_value", "manufacture_date",
+                "expiry_date", "mrp", "mrp_includes_taxes", "unit_sale_price",
+                "consumer_care_name", "consumer_care_phone", "consumer_care_email",
+            ]:
+                extractions[key] = resolve_vision_only(key)
+            extractions["barcode_number"] = {"value": None, "confidence": 0.0, "source": "missing"}
+            extractions["additional_declarations"] = (
+                vision_extractions.get("additional_declarations", [])
+                if vision_extractions else []
+            )
+            if vision_extractions and vision_extractions.get("is_imported"):
+                extractions["is_imported"] = resolve_vision_only("is_imported")
+                extractions["importer_name"] = resolve_vision_only("importer_name")
+                extractions["importer_address"] = resolve_vision_only("importer_address")
+        else:
+            # ── BARCODE + CATALOG PATH ────────────────────────────────────────
+            # We have a barcode and catalog reference. Vision still wins when confident.
+            extractions["product_name"] = resolve_field("product_name", prod_data["product_name"], 0.98)
+            extractions["manufacturer_name"] = resolve_field("manufacturer_name", prod_data["manufacturer_name"], 0.98)
+            extractions["manufacturer_address"] = resolve_field("manufacturer_address", prod_data["manufacturer_address"], 0.95)
+            extractions["country_of_origin"] = resolve_field("country_of_origin", prod_data.get("country_of_origin"), 0.99)
+            extractions["generic_name"] = resolve_field("generic_name", prod_data["generic_name"], 0.95)
+            extractions["net_quantity"] = resolve_field("net_quantity", prod_data["net_quantity"], 0.98)
+            extractions["net_quantity_unit"] = resolve_field("net_quantity_unit", prod_data["net_quantity_unit"], 0.98)
+            extractions["net_quantity_value"] = resolve_field("net_quantity_value", prod_data["net_quantity_value"], 0.98)
+            extractions["manufacture_date"] = resolve_field("manufacture_date", prod_data["manufacture_date"], 0.92)
+            extractions["expiry_date"] = resolve_field("expiry_date", prod_data["expiry_date"], 0.92)
+            extractions["mrp"] = resolve_field("mrp", prod_data["mrp"], 0.98)
+            extractions["mrp_includes_taxes"] = resolve_field("mrp_includes_taxes", prod_data.get("mrp_includes_taxes", True), 0.95)
+            extractions["unit_sale_price"] = resolve_field("unit_sale_price", prod_data.get("unit_sale_price"), 0.95)
+            extractions["consumer_care_name"] = resolve_field("consumer_care_name", prod_data.get("consumer_care_name"), 0.90)
+            extractions["consumer_care_phone"] = resolve_field("consumer_care_phone", prod_data.get("consumer_care_phone"), 0.95)
+            extractions["consumer_care_email"] = resolve_field("consumer_care_email", prod_data.get("consumer_care_email"), 0.92)
+            extractions["barcode_number"] = {"value": clean_code, "confidence": 1.0, "source": "barcode_scanner"}
+            extractions["additional_declarations"] = prod_data.get("additional_declarations", [])
 
         # 5. Evaluate LMPC statutory compliance
         verdict = lmpc_evaluator.evaluate(extractions)
