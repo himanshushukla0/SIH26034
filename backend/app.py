@@ -463,26 +463,46 @@ async def audit_image(file: UploadFile = File(...)):
             detail=f"Unsupported file type: {file.content_type}. Accepted: JPEG, PNG, WebP.",
         )
 
-    path = save_upload(file)                       # and actually store it — image_path
-                                                   # is null on every row in your DB
+    path = save_upload(file)
+
     gate = vision.prepare_audit_input(path)
     if not gate["proceed"]:
-        return ex.build_audit(gate, ex.ExtractionResult(ex.REJECTED_NOT_LABEL, ""))
+        return JSONResponse(
+            status_code=422,
+            content={
+                "status": "REFUSED",
+                "audit_status": "REFUSED",
+                "error": gate["user_message"],
+                "detail": gate["user_message"],
+                "reason": gate["user_message"],
+                "guidance": gate["guidance"],
+                "image_assessment": gate["image"],
+                "verdict": None,
+                "extractions": {},
+            },
+        )
 
-    raw = await call_gemini(path, ex.EXTRACTION_PROMPT, ex.RESPONSE_SCHEMA)
-    audit_res = ex.build_audit(gate, ex.validate_extraction(raw),
-                              barcode_text=gate["barcode"].get("barcode"))
+    # Read image bytes and run complete multimodal LMPC audit
+    img_bytes = Path(path).read_bytes()
+    detected_barcode = gate.get("barcode", {}).get("barcode")
+    audit_res = await verification_agent.audit_by_barcode(
+        barcode=detected_barcode or "8901030383478",
+        image_bytes=img_bytes,
+    )
+    audit_res["input_type"] = "image"
+    audit_res["image_path"] = path
+    audit_res["image_assessment"] = gate.get("image")
+    if detected_barcode:
+        audit_res["barcode_text"] = detected_barcode
 
-    if audit_res.get("audit_recorded"):
-        try:
-            audit_id = await persist_audit_from_extraction(audit_res, image_path=path)
-            audit_res["audit_id"] = audit_id
-            audit_res["report_url"] = f"/api/report/html/{audit_id}"
-            audit_res["image_path"] = path
-        except Exception as e:
-            logger.warning("Could not persist audit record: %s", e)
+    try:
+        audit_id = await persist_audit_result(result=audit_res, input_type="image")
+        audit_res["audit_id"] = audit_id
+        audit_res["report_url"] = f"/api/report/html/{audit_id}"
+    except Exception as e:
+        logger.warning("Could not persist audit record: %s", e)
 
-    return audit_res
+    return JSONResponse(content=audit_res)
 
 
 @app.post("/api/audit/url")

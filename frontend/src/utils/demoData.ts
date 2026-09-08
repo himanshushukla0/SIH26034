@@ -807,30 +807,58 @@ export function generateDynamicBarcodeAudit(
   const suffix = cleanCode.slice(-4) || "1001";
   const mfgCode = cleanCode.length >= 7 ? cleanCode.slice(3, 7) : "4401";
 
-  // Derive unique quantity and pricing from barcode numbers so every item is unique
+  // GS1 Indian brand intelligence
+  const prefix7 = cleanCode.slice(0, 7);
+  const BRAND_MAP: Record<string, { brand: string; mfg: string; addr: string; phone: string; email: string; cat: string }> = {
+    "8901058": { brand: "Nestlé", mfg: "Nestlé India Limited", addr: "100/101, World Trade Centre, Barakhamba Lane, New Delhi - 110001", phone: "1800-103-1947", email: "wecare@in.nestle.com", cat: "Packaged Food & Instant Noodles" },
+    "8901725": { brand: "Parle", mfg: "Parle Products Pvt. Ltd.", addr: "North Level Crossing, Vile Parle East, Mumbai, Maharashtra - 400057", phone: "022-66916911", email: "cs@parle.biz", cat: "Biscuits & Confectionery" },
+    "8901063": { brand: "Britannia", mfg: "Britannia Industries Limited", addr: "5/1A Hungerford Street, Kolkata, West Bengal - 700017", phone: "1800-4254-449", email: "feedback@britindia.com", cat: "Bakery & Biscuits" },
+    "8901030": { brand: "HUL", mfg: "Hindustan Unilever Limited", addr: "Unilever House, B. D. Sawant Marg, Chakala, Andheri (E), Mumbai, Maharashtra - 400099", phone: "1800-10-22-221", email: "lever.care@unilever.com", cat: "Personal & Home Care" },
+    "8901038": { brand: "ITC", mfg: "ITC Limited", addr: "Virginia House, 37 J.L. Nehru Road, Kolkata, West Bengal - 700071", phone: "1800-425-4444", email: "itccares@itc.in", cat: "Packaged Food & Snacks" },
+    "8901262": { brand: "Amul", mfg: "Gujarat Cooperative Milk Marketing Federation Ltd.", addr: "Amul Dairy Road, Anand, Gujarat - 388001", phone: "1800-258-3333", email: "customercare@amul.coop", cat: "Dairy Products" },
+    "8901425": { brand: "PepsiCo / Lay's", mfg: "PepsiCo India Holdings Pvt. Ltd.", addr: "Level 3-6, Pioneer Square, Sector 62, Golf Course Extn Road, Gurugram, Haryana - 122101", phone: "1800-224-020", email: "consumer.feedback@pepsico.com", cat: "Savoury Snacks & Chips" },
+    "8901499": { brand: "Dettol / Reckitt", mfg: "Reckitt Benckiser (India) Pvt. Ltd.", addr: "DLF Cyber Park, Tower C, 6th Floor, Sector 20, Gurugram, Haryana - 122002", phone: "1800-102-7245", email: "consumer.relations@reckitt.com", cat: "Antiseptic & Hygiene Products" },
+    "8901314": { brand: "Colgate", mfg: "Colgate-Palmolive (India) Limited", addr: "Colgate Research Centre, Main Street, Hiranandani Gardens, Powai, Mumbai, Maharashtra - 400076", phone: "1800-225-599", email: "consumeraffairs_india@colpal.com", cat: "Oral Care Products" },
+    "8901088": { brand: "Dabur", mfg: "Dabur India Limited", addr: "8/3, Asaf Ali Road, New Delhi - 110002", phone: "1800-103-1644", email: "daburcares@feedback.dabur", cat: "Healthcare & Honey" },
+    "8902579": { brand: "Haldiram's", mfg: "Haldiram Snacks Pvt. Ltd.", addr: "B-1/H-8, Mohan Co-operative Industrial Estate, Mathura Road, New Delhi - 110044", phone: "011-45204100", email: "customercare@haldiram.com", cat: "Namkeen & Traditional Sweets" },
+    "8901233": { brand: "Cadbury", mfg: "Mondelez India Foods Private Limited", addr: "Unit 2001, 20th Floor, Tower-3, One International Center, Parel, Mumbai, Maharashtra - 400013", phone: "1800-22-7080", email: "suggestions@mdlz.com", cat: "Chocolates & Confectionery" },
+    "8901012": { brand: "Tata Consumer", mfg: "Tata Consumer Products Limited", addr: "1, Bishop Lefroy Road, Kolkata, West Bengal - 700020", phone: "1800-108-4488", email: "care@tataconsumer.com", cat: "Tea, Salt & Pulses" },
+  };
+
+  const knownBrand = BRAND_MAP[prefix7];
+
+  // Derive realistic quantity and pricing
   const lastDigit = parseInt(cleanCode.slice(-1) || "5", 10);
-  const qtyNum = lastDigit % 3 === 0 ? 1000 : lastDigit % 2 === 0 ? 250 : 500;
-  const unitStr = lastDigit % 3 === 0 && lastDigit > 5 ? "ml" : "g";
-  const basePrice = qtyNum === 1000 ? 220.0 + (lastDigit * 15) : qtyNum === 250 ? 55.0 + (lastDigit * 5) : 110.0 + (lastDigit * 10);
+  const qtyNum = lastDigit % 3 === 0 ? 100 : lastDigit % 2 === 0 ? 250 : 500;
+  const unitStr = "g";
+  const basePrice = qtyNum === 100 ? 20.0 : qtyNum === 250 ? 45.0 : 95.0;
   const mrpStr = basePrice.toFixed(2);
   const uspNum = (basePrice / qtyNum).toFixed(2);
   const uspStr = `${uspNum} per ${unitStr}`;
 
   const prodName = isForeign
     ? `International Consumer SKU #${suffix} (${country})`
-    : `Indian Packaged Commodity SKU #${suffix}`;
+    : (knownBrand ? `${knownBrand.brand} Pre-Packaged Commodity (${qtyNum}g)` : `Indian Packaged Commodity SKU #${suffix}`);
   const mfgName = isForeign
     ? `Global Brands International SA (${country})`
-    : `Premier Consumer Products #${mfgCode} Ltd.`;
+    : (knownBrand ? knownBrand.mfg : `Premier Consumer Products #${mfgCode} Ltd.`);
   const mfgAddress = isForeign
     ? `Export Logistics Park, Zone B, ${country}`
-    : `Plot ${suffix.slice(0, 2)}, Industrial Area, State Highway, PIN - 4000${suffix.slice(-2)}`;
+    : (knownBrand ? knownBrand.addr : `Plot ${suffix.slice(0, 2)}, Industrial Area, State Highway, PIN - 4000${suffix.slice(-2)}`);
+  const carePhone = knownBrand ? knownBrand.phone : `1800-419-${suffix}`;
+  const careEmail = knownBrand ? knownBrand.email : `care@fmcg${mfgCode}.in`;
+  const genericName = knownBrand ? knownBrand.cat : "Pre-Packaged Consumer Goods";
 
   const auditId = `audit-${Date.now()}-${suffix}`;
+
+  const compScore = isForeign ? 65.0 : 96.0;
+  const compStatus = isForeign ? "PARTIAL_VIOLATION" : "COMPLIANT";
 
   return {
     input_type: inputType,
     stage: "completed",
+    status: "COMPLETED",
+    audit_status: "COMPLETED",
     error: null,
     audit_id: auditId,
     report_url: `#`,
@@ -839,38 +867,44 @@ export function generateDynamicBarcodeAudit(
       manufacturer_name: { value: mfgName, confidence: 0.96 },
       manufacturer_address: { value: mfgAddress, confidence: 0.94 },
       country_of_origin: { value: country, confidence: 0.99 },
-      generic_name: { value: "Pre-Packaged Consumer Goods", confidence: 0.95 },
+      generic_name: { value: genericName, confidence: 0.95 },
       net_quantity: { value: `${qtyNum} ${unitStr}`, confidence: 0.98 },
       net_quantity_unit: { value: unitStr, confidence: 0.98 },
       net_quantity_value: { value: qtyNum, confidence: 0.98 },
       manufacture_date: { value: "06/2026", confidence: 0.92 },
-      expiry_date: { value: "06/2027", confidence: 0.92 },
+      expiry_date: { value: "12/2026", confidence: 0.92 },
       mrp: { value: mrpStr, confidence: 0.99 },
       mrp_includes_taxes: { value: true, confidence: 0.96 },
       unit_sale_price: { value: uspStr, confidence: 0.95 },
       consumer_care_name: { value: "Consumer Grievance Cell", confidence: 0.90 },
-      consumer_care_phone: { value: `1800-419-${suffix}`, confidence: 0.95 },
-      consumer_care_email: { value: `care@fmcg${mfgCode}.in`, confidence: 0.93 },
+      consumer_care_phone: { value: carePhone, confidence: 0.95 },
+      consumer_care_email: { value: careEmail, confidence: 0.93 },
       barcode_number: { value: cleanCode, confidence: 1.0 },
       additional_declarations: [`GS1 Country Prefix: ${country}`, `SKU Ref: ${cleanCode}`],
     },
     verdict: {
-      compliance_score: isForeign ? 65.0 : 96.0,
+      score: compScore,
+      compliance_score: compScore,
+      total_rules: 10,
       total_checks: 10,
+      passed_rules: isForeign ? 7 : 10,
       passed_checks: isForeign ? 7 : 10,
+      failed_rules: isForeign ? 3 : 0,
       failed_checks: isForeign ? 3 : 0,
-      overall_status: isForeign ? "PARTIAL_VIOLATION" : "COMPLIANT",
+      status: compStatus,
+      overall_status: compStatus,
+      summary: `LMPC compliance score: ${compScore.toFixed(1)}% (${isForeign ? "7/10" : "10/10"} mandatory declarations compliant)`,
       computed_usp: `₹${uspNum} / ${unitStr}`,
       declaration_status: {
         manufacturer: { status: "FOUND", value: mfgName },
         origin: { status: "FOUND", value: country },
-        generic_name: { status: "FOUND", value: "Pre-Packaged Consumer Goods" },
+        generic_name: { status: "FOUND", value: genericName },
         net_quantity: { status: "FOUND", value: `${qtyNum} ${unitStr}` },
         date: { status: "FOUND", value: "06/2026" },
-        expiry: { status: "FOUND", value: "06/2027" },
+        expiry: { status: "FOUND", value: "12/2026" },
         mrp: { status: "FOUND", value: `₹${mrpStr}` },
         usp: { status: "FOUND", value: `₹${uspNum} / ${unitStr}` },
-        consumer_care: { status: "FOUND", value: `1800-419-${suffix}` },
+        consumer_care: { status: "FOUND", value: carePhone },
         font_height: { status: "FOUND", value: "Compliant" },
       },
       violations: isForeign

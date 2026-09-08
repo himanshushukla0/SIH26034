@@ -124,23 +124,28 @@ class VisionAgent:
         )
 
         try:
+            import asyncio
             # Build multimodal content
             image_part = genai_types.Part.from_bytes(
                 data=image_bytes,
                 mime_type=mime_type,
             )
 
-            response = self.client.models.generate_content(
+            config = genai_types.GenerateContentConfig(
+                temperature=0.1,  # Low temperature for factual extraction
+                max_output_tokens=4096,
+                response_mime_type="application/json",
+            )
+
+            response = await asyncio.to_thread(
+                self.client.models.generate_content,
                 model=self.model,
                 contents=[EXTRACTION_PROMPT, image_part],
-                config=genai_types.GenerateContentConfig(
-                    temperature=0.1,  # Low temperature for factual extraction
-                    max_output_tokens=4096,
-                ),
+                config=config,
             )
 
             # Parse the JSON response
-            raw_text = response.text.strip()
+            raw_text = response.text.strip() if response.text else "{}"
 
             # Strip markdown code fences if present
             if raw_text.startswith("```"):
